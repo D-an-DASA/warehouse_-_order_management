@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Self-Hosted Spotify</title>
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+
+<body>
+
+    <!-- APPLICATION HEADER -->
+    <div id="header"></div>
+
+    <!-- TOP NAVIGATION -->
+    <div id="navbar"></div>
+
+    <!-- APPLICATION LAYOUT -->
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <div id="sidebar"></div>
+
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <section class="content-placeholder">
+
+                <h1>Dashboard</h1>
+
+                <p>
+                    Dashboard content will go here.
+                </p>
+
+            </section>
+            
+
+
+        </main>
+
+    </div>
+
+
+    <!-- JAVASCRIPT -->
+    <script src="app.js"></script>
+    <script src="components/header.js"></script>
+    <script src="components/navbar.js"></script>
+    <script src="components/sidebar.js"></script>
+
+
+    <!-- Initialize components -->
+
+    <script>
+
+        loadHeader();
+        loadNavbar();
+        loadSidebar("home");
+
+    </script>
+
+</body>
+
+</html>
