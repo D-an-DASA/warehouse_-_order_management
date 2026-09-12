@@ -9,10 +9,10 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Self-Hosted Spotify</title>
+    <title>DASA</title>
 
     <!-- Global CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="CSS/style.css">
 
 </head>
 
@@ -29,23 +29,24 @@
             <!-- APPLICATION HEADER -->
             <div id="header"></div>
 
-            <!-- TOP NAVIGATION -->
-            <div id="navbar"></div>
-
             <!-- Main Content -->
             <main class="main-content">
 
-            <section class="content-placeholder">
-
                 <h1>Dashboard</h1>
 
-                <p>
-                    Dashboard content will go here.
-                </p>
+                <section class="content-placeholder">
 
-            </section>
-            
+                    <!-- Revenue Chart -->
+                    <div style="
+                        width: 100%;
+                        max-width: 800px;
+                        height: 400px;
+                        margin-top: 30px;
+                    ">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
 
+                </section>
 
             </main>
 
@@ -53,21 +54,25 @@
     </div>
 
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
     <!-- JAVASCRIPT -->
-    <script src="app.js"></script>
-    <script src="components/header.js"></script>
-    <script src="components/navbar.js"></script>
-    <script src="components/sidebar.js"></script>
+    <!-- Global application logic -->
+    <script src="JavaScript/app.js"></script>
+    <!-- Layout components -->
+    <script src="JavaScript/header.js"></script>
+    <script src="JavaScript/sidebar.js"></script>
+    <!-- Chart logic -->
+    <script src="JavaScript/dashboardChart.js"></script>
 
 
-    <!-- Initialize components -->
 
     <script>
-
         loadHeader();
-        loadNavbar();
         loadSidebar("home");
-
+        createRevenueChart();
     </script>
 
 </body>

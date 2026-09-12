@@ -64,6 +64,7 @@ body {
     display: flex;
     width: 100%;
     min-height: 100vh;
+    align-items: stretch;
 }
 
 .app-content {
@@ -79,13 +80,13 @@ body {
 ========================= */
 
 #sidebar {
-    height: 100vh;
+    align-self: stretch;
     flex-shrink: 0;
 }
 
 .sidebar {
     width: 200px;
-    height: 100%;
+    min-height: 100%;
 
     background: #0f1726;
     border-right: 1px solid #263244;
@@ -254,7 +255,10 @@ body {
     overflow: auto;
 }
 
-
+.main-content h1 {
+    margin-top: 0;
+    color: #8c96ac96;
+}
 /* =========================
    CONTENT PLACEHOLDER
 ========================= */
@@ -263,10 +267,7 @@ body {
     padding: 20px;
 }
 
-.content-placeholder h1 {
-    margin-top: 0;
-    color: #f1f3f7;
-}
+
 
 .content-placeholder p {
     color: #aeb6c4;
