@@ -3,22 +3,16 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
-
     <title>DASA</title>
 
     <!-- Global CSS -->
-    <link rel="stylesheet" href="style.css">
-
+    <link rel="stylesheet" href="CSS/style.css">
 </head>
 
-
 <body>
-
     <div class="app-shell">
 
         <!-- Sidebar -->
@@ -29,47 +23,78 @@
             <!-- APPLICATION HEADER -->
             <div id="header"></div>
 
-            <!-- TOP NAVIGATION -->
-            <div id="navbar"></div>
-
             <!-- Main Content -->
             <main class="main-content">
-
-            <section class="content-placeholder">
-
                 <h1>Data Input</h1>
+                <section class="content-placeholder">
 
-                <p>
-                    Data input content will go here.
-                </p>
 
-            </section>
-            
 
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 15px;
+                        max-width: 400px;
+                    ">
+
+                        <!-- Category -->
+                        <label for="category">Category</label>
+
+                        <select id="category">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+
+
+                        <!-- Amount -->
+                        <label for="amount">Amount</label>
+
+                        <input
+                            type="number"
+                            id="amount"
+                            placeholder="Enter amount"
+                        >
+
+
+                        <!-- Buttons -->
+                        <div style="
+                            display: flex;
+                            gap: 10px;
+                        ">
+
+                            <button id="addButton">
+                                Add
+                            </button>
+
+                            <button id="removeButton">
+                                Remove
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
 
             </main>
-
         </div>
     </div>
 
 
     <!-- JAVASCRIPT -->
-    <script src="app.js"></script>
-    <script src="components/header.js"></script>
-    <script src="components/navbar.js"></script>
-    <script src="components/sidebar.js"></script>
-
+    <script src="JavaScript/api.js"></script>
+    <script src="JavaScript/dataInput.js"></script>
+    <script src="JavaScript/app.js"></script>
+    <script src="JavaScript/header.js"></script>
+    <script src="JavaScript/sidebar.js"></script>
 
     <!-- Initialize components -->
-
     <script>
-
         loadHeader();
-        loadNavbar();
         loadSidebar("dataInput");
-
     </script>
 
 </body>
-
 </html>
