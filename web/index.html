@@ -1,80 +1,386 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DASA</title>
+    <link rel="stylesheet" href="CSS/style.css" />
+  </head>
 
-    <!-- Global CSS -->
-    <link rel="stylesheet" href="CSS/style.css">
+  <body>
+    <div class="app-content">
+      <!-- Header -->
+      <div id="header"></div>
 
-</head>
+      <!-- Navbar -->
+      <div id="navbar"></div>
 
+      <!-- Main Content -->
+      <main class="main-content">
+        <h1>Dashboard</h1>
 
-<body>
+        <!-- ========================================= -->
+        <!-- Search -->
+        <!-- ========================================= -->
 
-    <div class="app-shell">
+        <section class="search-section">
+          <div class="search-bar">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search by product ID or name..."
+              autocomplete="off"
+            />
 
-        <!-- Sidebar -->
-        <div id="sidebar"></div>
+            <button id="searchButton" type="button">Search</button>
+          </div>
 
-        <div class="app-content">
+          <div
+            id="searchRecommendations"
+            class="search-recommendations"
+            hidden
+          ></div>
+        </section>
 
-            <!-- APPLICATION HEADER -->
-            <div id="header"></div>
+        <!-- ========================================= -->
+        <!-- Retrieval Results -->
+        <!-- ========================================= -->
 
-            <!-- Main Content -->
-            <main class="main-content">
+        <section class="recent-operations-section">
+          <div class="section-header">
+            <div>
+              <h2>Retrieval Results</h2>
+              <p>Products retrieved by priority</p>
+            </div>
 
-                <h1>Dashboard</h1>
+            <span class="operation-count" id="retrievalCount">
+              0 products
+            </span>
+          </div>
 
-                <section class="content-placeholder">
+          <div class="recent-operations-container">
+            <table class="recent-operations-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Product ID</th>
+                  <th>Product Name</th>
+                  <th>Made Date</th>
+                  <th>Arrived Time</th>
+                  <th>Best By Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
 
-                    <!-- Revenue Chart -->
-                    <div style="
-                        width: 100%;
-                        max-width: 800px;
-                        height: 400px;
-                        margin-top: 30px;
-                    ">
-                        <canvas id="revenueChart"></canvas>
-                    </div>
+              <tbody id="retrievalResults">
+                <tr>
+                  <td colspan="7" class="empty-state">No retrieval results.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-                </section>
+        <!-- ========================================= -->
+        <!-- Recent Workspace -->
+        <!-- ========================================= -->
 
-            </main>
+        <section class="recent-operations-section">
+          <div class="section-header">
+            <div>
+              <h2>Recent Workspace</h2>
+              <p>Recently interacted products</p>
+            </div>
 
-        </div>
+            <span class="operation-count" id="operationCount">
+              0 products
+            </span>
+          </div>
+
+          <div class="recent-operations-container">
+            <table class="recent-operations-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Product ID</th>
+                  <th>Product Name</th>
+                  <th>Operation</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+
+              <tbody id="recentOperations">
+                <tr>
+                  <td colspan="5" class="empty-state">
+                    Loading recent workspace...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
     </div>
 
+    <!-- ========================================= -->
+    <!-- JavaScript -->
+    <!-- ========================================= -->
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-
-    <!-- JAVASCRIPT -->
-    <!-- Global application logic -->
     <script src="JavaScript/app.js"></script>
-    <!-- Layout components -->
-    <script src="JavaScript/header.js"></script>
-    <script src="JavaScript/sidebar.js"></script>
-    <!-- Chart logic -->
-    <script src="JavaScript/dashboardChart.js"></script>
-
-
+    <script src="JavaScript/api.js"></script>
 
     <script>
-        loadHeader();
-        loadSidebar("home");
-        createRevenueChart();
+      loadHeader();
+      loadNavbar();
+
+      // =========================================
+      // Recent Workspace
+      // =========================================
+
+      async function loadRecentWorkspace() {
+        const table = document.getElementById("recentOperations");
+        const count = document.getElementById("operationCount");
+
+        try {
+          const items = await getData("/product/recent");
+
+          count.textContent = `${items.length} product${items.length !== 1 ? "s" : ""}`;
+
+          if (items.length === 0) {
+            table.innerHTML = `
+              <tr>
+                <td colspan="5" class="empty-state">
+                  No recent workspace activity.
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          table.innerHTML = items
+            .map((item, index) => {
+              const product = item.product;
+
+              return `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${product.id}</td>
+                  <td>${product.product_name}</td>
+                  <td>${item.operation}</td>
+                  <td>${item.time}</td>
+                </tr>
+              `;
+            })
+            .join("");
+        } catch (error) {
+          console.error("Recent workspace error:", error);
+
+          count.textContent = "0 products";
+
+          table.innerHTML = `
+            <tr>
+              <td colspan="5" class="empty-state">
+                Failed to load recent workspace.
+              </td>
+            </tr>
+          `;
+        }
+      }
+
+      // =========================================
+      // Retrieval Results
+      // =========================================
+
+      async function loadRetrievalResults(searchTerm = "") {
+        const table = document.getElementById("retrievalResults");
+        const count = document.getElementById("retrievalCount");
+
+        try {
+          const products = await getData("/product/result");
+
+          let results = products.slice(0, 5);
+
+          if (searchTerm.trim() !== "") {
+            const keyword = searchTerm.trim().toLowerCase();
+
+            results = products.filter((product) => {
+              const id = product.id.toLowerCase();
+              const name = product.product_name.toLowerCase();
+
+              return id.includes(keyword) || name.includes(keyword);
+            });
+          }
+
+          count.textContent = `${results.length} product${results.length !== 1 ? "s" : ""}`;
+
+          if (results.length === 0) {
+            table.innerHTML = `
+              <tr>
+                <td colspan="7" class="empty-state">
+                  No products found.
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          table.innerHTML = results
+            .map(
+              (product, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${product.id}</td>
+                  <td>${product.product_name}</td>
+                  <td>${product.made_date}</td>
+                  <td>${product.arrived_time}</td>
+                  <td>${product.best_by_date}</td>
+                  <td>${product.status}</td>
+                </tr>
+              `,
+            )
+            .join("");
+        } catch (error) {
+          console.error("Retrieval result error:", error);
+
+          count.textContent = "0 products";
+
+          table.innerHTML = `
+            <tr>
+              <td colspan="7" class="empty-state">
+                Failed to load retrieval results.
+              </td>
+            </tr>
+          `;
+        }
+      }
+
+      // =========================================
+      // Search Autocomplete
+      // =========================================
+
+      async function loadSearchRecommendations(prefix) {
+        const recommendationBox = document.getElementById(
+          "searchRecommendations",
+        );
+
+        if (!prefix.trim()) {
+          recommendationBox.innerHTML = "";
+          recommendationBox.hidden = true;
+          return;
+        }
+
+        try {
+          const suggestions = await postData("/search/autocomplete", {
+            prefix: prefix.trim(),
+          });
+
+          if (!Array.isArray(suggestions) || suggestions.length === 0) {
+            recommendationBox.innerHTML = "";
+            recommendationBox.hidden = true;
+            return;
+          }
+
+          recommendationBox.innerHTML = suggestions
+            .map(
+              (suggestion) => `
+                <div class="search-recommendation" data-value="${suggestion}">
+                  ${suggestion}
+                </div>
+              `,
+            )
+            .join("");
+
+          recommendationBox.hidden = false;
+        } catch (error) {
+          console.error("Autocomplete error:", error);
+
+          recommendationBox.innerHTML = "";
+          recommendationBox.hidden = true;
+        }
+      }
+
+      // =========================================
+      // Search
+      // =========================================
+
+      async function performSearch() {
+        const searchInput = document.getElementById("searchInput");
+        const recommendationBox = document.getElementById(
+          "searchRecommendations",
+        );
+
+        const searchTerm = searchInput.value.trim();
+
+        recommendationBox.innerHTML = "";
+        recommendationBox.hidden = true;
+
+        await loadRetrievalResults(searchTerm);
+      }
+
+      // =========================================
+      // Search Input Events
+      // =========================================
+
+      const searchInput = document.getElementById("searchInput");
+      const searchButton = document.getElementById("searchButton");
+      const recommendationBox = document.getElementById(
+        "searchRecommendations",
+      );
+
+      searchInput.addEventListener("input", () => {
+        const prefix = searchInput.value.trim();
+        loadSearchRecommendations(prefix);
+      });
+
+      searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          performSearch();
+        }
+      });
+
+      searchButton.addEventListener("click", () => {
+        performSearch();
+      });
+
+      recommendationBox.addEventListener("click", (event) => {
+        const recommendation = event.target.closest(".search-recommendation");
+
+        if (!recommendation) {
+          return;
+        }
+
+        const value = recommendation.dataset.value;
+
+        searchInput.value = value;
+        recommendationBox.innerHTML = "";
+        recommendationBox.hidden = true;
+
+        performSearch();
+      });
+
+      document.addEventListener("click", (event) => {
+        const searchSection = document.querySelector(".search-section");
+
+        if (searchSection && !searchSection.contains(event.target)) {
+          recommendationBox.innerHTML = "";
+          recommendationBox.hidden = true;
+        }
+      });
+
+      // =========================================
+      // Initial Load
+      // =========================================
+
+      loadRecentWorkspace();
+      loadRetrievalResults();
+
+      // =========================================
+      // Refresh Recent Workspace
+      // =========================================
+
+      setInterval(loadRecentWorkspace, 2000);
     </script>
-
-</body>
-
+  </body>
 </html>

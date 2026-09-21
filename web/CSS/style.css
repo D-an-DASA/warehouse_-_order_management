@@ -1,297 +1,421 @@
-
 /* =========================
-   GLOBAL
+GLOBAL
 ========================= */
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 html,
 body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    font-family: Arial, sans-serif;
-
-    /* Dark blue background */
-    background: #8695b8;
-    color: #d6d9e0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  font-family: Arial, sans-serif;
+  background: #8695b8;
+  color: #d6d9e0;
 }
 
+/* =========================
+APPLICATION LAYOUT
+========================= */
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+}
 
 /* =========================
-   APPLICATION HEADER
+APPLICATION HEADER
 ========================= */
 
 .app-header {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0 20px;
-
-    background: #111827;
-    border-bottom: 1px solid #263244;
-
-    flex-shrink: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 20px;
+  background: #111827;
+  border-bottom: 1px solid #263244;
+  flex-shrink: 0;
 }
-
 
 /* Application logo */
 
 .app-logo {
-    font-size: 24px;
+  font-size: 24px;
 }
-
 
 /* Application name */
 
 .app-name {
-    margin-left: 12px;
-    font-size: 18px;
-    font-weight: 600;
-    color: #f1f3f7;
+  margin-left: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f3f7;
 }
-
 
 /* =========================
-   APPLICATION LAYOUT
-========================= */
-
-.app-shell {
-    display: flex;
-    width: 100%;
-    min-height: 100vh;
-    align-items: stretch;
-}
-
-.app-content {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-}
-
-
-/* =========================
-   SIDEBAR
-========================= */
-
-#sidebar {
-    align-self: stretch;
-    flex-shrink: 0;
-}
-
-.sidebar {
-    width: 200px;
-    min-height: 100%;
-
-    background: #0f1726;
-    border-right: 1px solid #263244;
-
-    padding: 16px 12px;
-}
-
-
-/* Sidebar title */
-
-.sidebar-title {
-    margin: 0 -12px 20px;
-    padding: 0 20px 9px;
-
-    font-size: 18px;
-    font-weight: 600;
-
-    color: #eef1f6;
-    text-transform: uppercase;
-    text-align: center;
-
-    border-bottom: 1px solid #263244;
-}
-
-
-/* Sidebar navigation */
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-
-/* Sidebar buttons */
-
-.sidebar-button {
-    width: 100%;
-
-    display: flex;
-    align-items: center;
-
-    gap: 10px;
-    padding: 12px 14px;
-
-    border: none;
-    border-radius: 8px;
-
-    background: transparent;
-
-    color: #aeb6c4;
-
-    font-size: 14px;
-    text-align: center;
-
-    cursor: pointer;
-
-    transition:
-        background 0.15s ease,
-        color 0.15s ease;
-}
-
-
-/* Sidebar hover */
-
-.sidebar-button:hover {
-    background: #1a2638;
-    color: #e5e9f0;
-}
-
-
-/* Active sidebar button */
-
-.sidebar-button.active {
-    font-weight: 600;
-
-    background: #24344d;
-    color: #ffffff;
-}
-
-
-/* =========================
-   APPLICATION MAIN
-========================= */
-
-.app-main {
-    flex: 1;
-
-    display: flex;
-    flex-direction: column;
-
-    min-width: 0;
-    min-height: 0;
-
-    background: #182235;
-}
-
-
-/* =========================
-   TOP NAVIGATION
+TOP NAVIGATION
 ========================= */
 
 .top-nav {
-    height: 48px;
-
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-
-    padding: 0 20px;
-
-    background: #111827;
-    border-bottom: 1px solid #263244;
-
-    flex-shrink: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 20px;
+  background: #111827;
+  border-bottom: 1px solid #263244;
+  flex-shrink: 0;
 }
-
 
 /* Navigation buttons */
 
 .nav-button {
-    display: flex;
-    align-items: center;
-
-    gap: 6px;
-    padding: 8px 12px;
-
-    border: none;
-    border-radius: 6px;
-
-    background: transparent;
-
-    color: #aeb6c4;
-
-    font-size: 14px;
-
-    cursor: pointer;
-
-    transition:
-        background 0.15s ease,
-        color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #aeb6c4;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
-
 
 /* Navigation hover */
 
 .nav-button:hover {
-    background: #1a2638;
-    color: #e5e9f0;
+  background: #1a2638;
+  color: #e5e9f0;
 }
 
-
 /* =========================
-   MAIN CONTENT
+MAIN CONTENT
 ========================= */
 
 .main-content {
-    flex: 1;
-
-    min-height: 0;
-
-    padding: 10px;
-
-    background: #182235;
-
-    overflow: auto;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 40px;
+  box-sizing: border-box;
+  background: #182235;
+  overflow: auto;
 }
+
+/* Dashboard title */
 
 .main-content h1 {
-    margin-top: 0;
-    color: #8c96ac96;
+  margin: 0 0 24px;
+  color: #d6d9e0;
+  font-size: 28px;
 }
+
 /* =========================
-   CONTENT PLACEHOLDER
+SEARCH SECTION
+========================= */
+
+.search-section {
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+/* Search bar */
+
+.search-bar {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+}
+
+/* Search input */
+
+.search-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #34445c;
+  border-radius: 8px;
+  outline: none;
+  background: #111827;
+  color: #e5e9f0;
+  font-size: 14px;
+}
+
+.search-bar input::placeholder {
+  color: #7f8ba1;
+}
+
+.search-bar input:focus {
+  border-color: #667a9d;
+}
+
+/* Search button */
+
+.search-bar button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #2a374b;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.search-bar button:hover {
+  background: #34445c;
+}
+
+.search-bar button:active {
+  transform: translateY(1px);
+}
+
+/* =========================
+SEARCH RECOMMENDATIONS
+========================= */
+
+.search-recommendations {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid #34445c;
+  border-radius: 8px;
+  background: #111827;
+  overflow: hidden;
+}
+
+/* =========================
+RECENT OPERATIONS
+========================= */
+
+.recent-operations-section {
+  width: 100%;
+  margin-top: 32px;
+  padding: 24px;
+  background: #111827;
+  border: 1px solid #263244;
+  border-radius: 12px;
+}
+
+/* Section header */
+
+.recent-operations-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+/* Section title */
+
+.recent-operations-section h2 {
+  margin: 0;
+  color: #e5e9f0;
+  font-size: 20px;
+}
+
+/* Section description */
+
+.recent-operations-section .section-header p {
+  margin: 4px 0 0;
+  color: #7f8ba1;
+  font-size: 14px;
+}
+
+/* Operation count */
+
+.operation-count {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #24344d;
+  color: #cbd3df;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Table container */
+
+.recent-operations-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* =========================
+RECENT OPERATIONS TABLE
+========================= */
+
+.recent-operations-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+/* Table header */
+
+.recent-operations-table th {
+  padding: 12px 16px;
+  text-align: left;
+  color: #7f8ba1;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-bottom: 1px solid #263244;
+  border-right: 1px solid #263244;
+}
+
+/* Table cells */
+
+.recent-operations-table td {
+  padding: 15px 16px;
+  color: #d6d9e0;
+  vertical-align: middle;
+  border-bottom: 1px solid #202b3d;
+  border-right: 1px solid #263244;
+}
+
+/* =========================
+TABLE VERTICAL LINES
+========================= */
+
+/* Remove vertical line from the last column */
+
+.recent-operations-table th:last-child,
+.recent-operations-table td:last-child {
+  border-right: none;
+}
+
+/* =========================
+ORDER COLUMN
+========================= */
+
+.recent-operations-table th:first-child,
+.recent-operations-table td:first-child {
+  width: 90px;
+  text-align: center;
+}
+
+/* =========================
+TIME COLUMN
+========================= */
+
+.recent-operations-table th:nth-child(2),
+.recent-operations-table td:nth-child(2) {
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* =========================
+OPERATION COLUMN
+========================= */
+
+.recent-operations-table td:nth-child(3) {
+  font-weight: 600;
+}
+
+/* =========================
+RESULT COLUMN
+========================= */
+
+.recent-operations-table td:nth-child(4) {
+  font-weight: 500;
+}
+
+/* =========================
+LAST ROW
+========================= */
+
+.recent-operations-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* =========================
+ROW HOVER
+========================= */
+
+.recent-operations-table tbody tr:hover {
+  background: #182235;
+}
+
+/* =========================
+EMPTY STATE
+========================= */
+
+.empty-state {
+  padding: 32px 16px !important;
+  text-align: center !important;
+  color: #7f8ba1 !important;
+}
+
+/* =========================
+CONTENT PLACEHOLDER
 ========================= */
 
 .content-placeholder {
-    padding: 20px;
+  padding: 20px;
 }
-
-
 
 .content-placeholder p {
-    color: #aeb6c4;
+  color: #aeb6c4;
 }
 
-
 /* =========================
-   SCROLLBAR
+SCROLLBAR
 ========================= */
 
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #0f1726;
+  background: #0f1726;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #2a374b;
-    border-radius: 4px;
+  background: #2a374b;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #34445c;
+  background: #34445c;
+}
+
+/* =========================
+RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 24px 20px;
+  }
+
+  .recent-operations-section {
+    padding: 18px;
+  }
+
+  .recent-operations-section .section-header {
+    align-items: flex-start;
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .search-bar {
+    flex-direction: column;
+  }
+
+  .search-bar button {
+    width: 100%;
+  }
 }
