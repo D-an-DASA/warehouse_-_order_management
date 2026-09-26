@@ -1,4 +1,6 @@
-#pragma once
+#ifndef TRIE_H
+#define TRIE_H
+
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -21,7 +23,9 @@ public:
     Trie();
     ~Trie();
 
-    void insert(const string& name, const string& id);
+    void insert(const string& productName, const string& productId);
     vector<string> searchByPrefix(const string& prefix);
-    bool remove(const string& name, const string& id);
+    bool remove(const string& productName, const string& productId);
 };
+
+#endif
