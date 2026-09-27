@@ -5,8 +5,8 @@
 #include <string>
 #include <chrono>
 #include <cassert>
-#include "../DSAcore/trie.h"
-#include "../DSAcore/product.h"
+#include "trie/trie.h"
+#include "product.h" 
 
 using namespace std;
 using namespace std::chrono;
