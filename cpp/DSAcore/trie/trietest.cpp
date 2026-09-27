@@ -5,8 +5,8 @@
 #include <string>
 #include <chrono>
 #include <cassert>
-#include "trie/trie.h"
-#include "product.h" 
+#include "trie.h"
+#include "../Product.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -40,29 +40,37 @@ vector<Product> loadProducts(const string& filename) {
 }
 
 // ============================================================
-// TEST 1: INSERT + SEARCH
+// TEST 1: INSERT + SEARCH với dữ liệu thật
 // ============================================================
-void testInsertAndSearch() {
-    cout << "\n=== Test 1: Insert and Search ===" << endl;
+void testWithRealNames() {
+    cout << "\n=== Test 1: Insert + Search voi ten that ===" << endl;
     Trie trie;
-    trie.insert("iPhone 15", "P001");
-    trie.insert("iPhone 15 Pro", "P002");
-    trie.insert("iPhone 16", "P003");
-    trie.insert("Samsung S24", "P004");
+    trie.insert("Power Bank", "P001");
+    trie.insert("USB Cable", "P002");
+    trie.insert("Laptop Stand", "P003");
+    trie.insert("USB Hub", "P004");
 
-    auto r = trie.searchByPrefix("iph");
-    cout << "  'iph': " << r.size() << " ket qua" << endl;
-    assert(r.size() == 3);
-
-    r = trie.searchByPrefix("iPhone 15");
-    cout << "  'iPhone 15': " << r.size() << " ket qua" << endl;
+    // Search "USB" - phải tìm được 2 sản phẩm
+    auto r = trie.searchByPrefix("USB");
+    cout << "  'USB': " << r.size() << " ket qua (mong doi 2)" << endl;
     assert(r.size() == 2);
 
-    r = trie.searchByPrefix("Xiaomi");
-    assert(r.empty());
-    cout << "  'Xiaomi': 0 ket qua" << endl;
+    // Search "Power" - phải tìm được 1
+    r = trie.searchByPrefix("Power");
+    cout << "  'Power': " << r.size() << " ket qua (mong doi 1)" << endl;
+    assert(r.size() == 1);
 
-    cout << "  => PASSED!" << endl;
+    // Search "Lap" - phải tìm được 1
+    r = trie.searchByPrefix("Lap");
+    cout << "  'Lap': " << r.size() << " ket qua (mong doi 1)" << endl;
+    assert(r.size() == 1);
+
+    // Search "XYZ" - không có
+    r = trie.searchByPrefix("XYZ");
+    assert(r.empty());
+    cout << "  'XYZ': 0 ket qua" << endl;
+
+    cout << "  => Test 1 PASSED!" << endl;
 }
 
 // ============================================================
@@ -71,18 +79,17 @@ void testInsertAndSearch() {
 void testRemove() {
     cout << "\n=== Test 2: Remove ===" << endl;
     Trie trie;
-    trie.insert("iPhone 15", "P001");
-    trie.insert("iPhone 15 Pro", "P002");
+    trie.insert("Power Bank", "P001");
+    trie.insert("Power Adapter", "P002");
 
-    assert(trie.remove("iPhone 15", "P001") == true);
-    auto r = trie.searchByPrefix("iPhone 15");
+    assert(trie.remove("Power Bank", "P001") == true);
+    auto r = trie.searchByPrefix("Power");
     assert(r.size() == 1 && r[0] == "P002");
     cout << "  Xoa P001 thanh cong" << endl;
 
-    assert(trie.remove("Samsung", "P999") == false);
+    assert(trie.remove("XYZ", "P999") == false);
     cout << "  Xoa khong ton tai -> OK" << endl;
-
-    cout << "  => PASSED!" << endl;
+    cout << "  => Test 2 PASSED!" << endl;
 }
 
 // ============================================================
@@ -96,28 +103,27 @@ void testEdgeCases() {
     cout << "  Trie rong -> OK" << endl;
 
     Trie trie;
-    trie.insert("iPhone 15", "P001");
-    trie.insert("Samsung", "P002");
+    trie.insert("USB Cable", "P001");
+    trie.insert("Power Bank", "P002");
     auto r = trie.searchByPrefix("");
     assert(r.size() == 2);
     cout << "  Tim '': " << r.size() << " ket qua" << endl;
 
-    r = trie.searchByPrefix("iPhone 15 Pro Max");
+    r = trie.searchByPrefix("USB Cable Pro Max Ultra");
     assert(r.empty());
     cout << "  Prefix dai hon ten -> OK" << endl;
 
     Trie trie2;
-    trie2.insert("iPhone 15", "P001");
-    trie2.insert("iPhone 15", "P002");
-    r = trie2.searchByPrefix("iPhone 15");
+    trie2.insert("USB Cable", "P001");
+    trie2.insert("USB Cable", "P002");
+    r = trie2.searchByPrefix("USB Cable");
     assert(r.size() == 2);
     cout << "  Nhieu san pham cung ten: " << r.size() << " ket qua" << endl;
-
-    cout << "  => PASSED!" << endl;
+    cout << "  => Test 3 PASSED!" << endl;
 }
 
 // ============================================================
-// BENCHMARK
+// BENCHMARK VỚI DATASET
 // ============================================================
 void benchmark(const string& filename, int expected) {
     cout << "\n========================================" << endl;
@@ -134,7 +140,8 @@ void benchmark(const string& filename, int expected) {
         return;
     }
 
-    cout << "  So san pham: " << products.size() << " (mong doi " << expected << ")" << endl;
+    cout << "  So san pham: " << products.size()
+         << " (mong doi " << expected << ")" << endl;
     cout << "  Doc CSV: " << loadMs << " ms" << endl;
 
     // Build Trie
@@ -147,8 +154,8 @@ void benchmark(const string& filename, int expected) {
     auto buildMs = duration_cast<milliseconds>(t1 - t0).count();
     cout << "  [Trie] Build: " << buildMs << " ms" << endl;
 
-    // Search Trie
-    vector<string> prefixes = {"P", "USB", "Shampoo", "Green", "Lap"};
+    // Test prefix thật trong dataset
+    vector<string> prefixes = {"Power", "USB", "Lap", "Green", "Samp"};
     int iter = 1000;
 
     t0 = high_resolution_clock::now();
@@ -157,12 +164,17 @@ void benchmark(const string& filename, int expected) {
             trie.searchByPrefix(p);
     t1 = high_resolution_clock::now();
     auto trieUs = duration_cast<microseconds>(t1 - t0).count();
-    double avgTrie = (double)trieUs / (iter * prefixes.size());
-    cout << "  [Trie] Search (" << iter * prefixes.size() << " lan): " 
+    cout << "  [Trie] Search (" << iter * prefixes.size() << " lan): "
          << trieUs << " us" << endl;
-    cout << "  [Trie] Trung binh: " << avgTrie << " us/lan" << endl;
 
-    // Search Linear
+    // Kiểm tra kết quả thực tế
+    cout << "\n  Vi du ket qua tra cuu:" << endl;
+    for (auto& p : prefixes) {
+        auto r = trie.searchByPrefix(p);
+        cout << "    '" << p << "': " << r.size() << " san pham" << endl;
+    }
+
+    // Linear scan (baseline)
     t0 = high_resolution_clock::now();
     for (int i = 0; i < iter; i++) {
         for (auto& prefix : prefixes) {
@@ -175,15 +187,12 @@ void benchmark(const string& filename, int expected) {
     }
     t1 = high_resolution_clock::now();
     auto linearUs = duration_cast<microseconds>(t1 - t0).count();
-    double avgLinear = (double)linearUs / (iter * prefixes.size());
-    cout << "  [Linear] Search (" << iter * prefixes.size() << " lan): " 
+    cout << "\n  [Linear] Search (" << iter * prefixes.size() << " lan): "
          << linearUs << " us" << endl;
-    cout << "  [Linear] Trung binh: " << avgLinear << " us/lan" << endl;
 
-    if (trieUs > 0) {
-        double speedup = (double)linearUs / trieUs;
-        cout << "\n  ==> Trie nhanh hon linear scan " << speedup << " lan" << endl;
-    }
+    if (trieUs > 0)
+        cout << "  ==> Trie nhanh hon " << (double)linearUs / trieUs
+             << " lan" << endl;
 }
 
 // ============================================================
@@ -195,12 +204,13 @@ int main() {
     cout << "   Nguoi thuc hien: Duong Minh Phuc" << endl;
     cout << "========================================" << endl;
 
-    testInsertAndSearch();
+    testWithRealNames();
     testRemove();
     testEdgeCases();
 
-    benchmark("../data/products_10k.csv", 10000);
-    // benchmark("../data/products_100k.csv", 100000);  // bỏ comment khi có file
+    // Đường dẫn từ DSAcore/trie/ đến cpp/data/
+//benchmark("../../product_inventory_10 000.csv", 10000);
+benchmark("../../product_inventory_100 000.csv", 100000);
 
     cout << "\n========================================" << endl;
     cout << "TAT CA TEST TRIE DA PASS!" << endl;
