@@ -8,7 +8,7 @@
 #include <string>
 #include <chrono>
 #include <cassert>
-#include "hastable.h"
+#include "hashtable.h"
 #include "Product.h"
 
 using namespace std;
