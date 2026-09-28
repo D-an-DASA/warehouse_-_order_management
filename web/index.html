@@ -156,9 +156,7 @@
       // CONFIGURATION
       // ============================================================
 
-      const SEARCH_INPUT_DEBOUNCE = 300;
       const AUTOCOMPLETE_DEBOUNCE = 300;
-
       const SEARCH_RESULT_POLLING = 1000;
       const RECENT_WORKSPACE_POLLING = 2000;
 
@@ -167,9 +165,7 @@
       // ============================================================
 
       const searchInput = document.getElementById("searchInput");
-
       const searchButton = document.getElementById("searchButton");
-
       const recommendationBox = document.getElementById(
         "searchRecommendations",
       );
@@ -199,11 +195,15 @@
        *
        * POST /search/input
        *
-       * The server only stores the string.
+       * IMPORTANT:
+       * This is NOT called when the user types.
        *
-       * No search is performed here.
+       * It is only called when the user commits a search:
+       *
+       *     - Click Search
+       *     - Press Enter
+       *     - Select an autocomplete suggestion
        */
-
       async function updateSearchInput() {
         try {
           await postText("/search/input", searchInput.value);
@@ -211,11 +211,6 @@
           console.error("Search input error:", error);
         }
       }
-
-      const debouncedSearchInput = debounce(
-        updateSearchInput,
-        SEARCH_INPUT_DEBOUNCE,
-      );
 
       // ============================================================
       // AUTOCOMPLETE
@@ -226,21 +221,20 @@
        *
        * GET /search/autocomplete?prefix=...
        *
-       * The request itself is debounced so that typing quickly
-       * does not generate one request per keystroke.
+       * This is the only operation triggered while typing.
+       *
+       * The request is debounced so that typing quickly does not
+       * generate a request for every single keystroke.
        */
-
       async function loadSearchRecommendations(prefix) {
-        const trimmedPrefix = prefix.trim();
-
-        if (!trimmedPrefix) {
+        if (!prefix.trim()) {
           recommendationBox.innerHTML = "";
           recommendationBox.hidden = true;
           return;
         }
 
         try {
-          const encodedPrefix = encodeURIComponent(trimmedPrefix);
+          const encodedPrefix = encodeURIComponent(prefix);
 
           const suggestions = await getData(
             `/search/autocomplete?prefix=${encodedPrefix}`,
@@ -255,14 +249,14 @@
           recommendationBox.innerHTML = suggestions
             .map(
               (suggestion) => `
-                  <div
-                    class="search-recommendation"
-                    data-value="${suggestion}"
-                    role="option"
-                  >
-                    ${suggestion}
-                  </div>
-                `,
+          <div
+            class="search-recommendation"
+            data-value="${suggestion}"
+            role="option"
+          >
+            ${suggestion}
+          </div>
+        `,
             )
             .join("");
 
@@ -294,10 +288,8 @@
        *
        * The frontend only displays the returned result.
        */
-
       async function loadSearchResult() {
         const table = document.getElementById("retrievalResults");
-
         const count = document.getElementById("retrievalCount");
 
         try {
@@ -313,32 +305,28 @@
 
           if (products.length === 0) {
             table.innerHTML = `
-              <tr>
-                <td
-                  colspan="7"
-                  class="empty-state"
-                >
-                  No products found.
-                </td>
-              </tr>
-            `;
-
+        <tr>
+          <td colspan="7" class="empty-state">
+            No products found.
+          </td>
+        </tr>
+      `;
             return;
           }
 
           table.innerHTML = products
             .map(
               (product, index) => `
-                  <tr>
-                    <td>${index + 1}</td>
-                    <td>${product.id}</td>
-                    <td>${product.product_name}</td>
-                    <td>${product.made_date}</td>
-                    <td>${product.arrived_time}</td>
-                    <td>${product.best_by_date}</td>
-                    <td>${product.status}</td>
-                  </tr>
-                `,
+          <tr>
+            <td>${index + 1}</td>
+            <td>${product.id}</td>
+            <td>${product.product_name}</td>
+            <td>${product.made_date}</td>
+            <td>${product.arrived_time}</td>
+            <td>${product.best_by_date}</td>
+            <td>${product.status}</td>
+          </tr>
+        `,
             )
             .join("");
         } catch (error) {
@@ -347,15 +335,12 @@
           count.textContent = "0 products";
 
           table.innerHTML = `
-            <tr>
-              <td
-                colspan="7"
-                class="empty-state"
-              >
-                Failed to load search results.
-              </td>
-            </tr>
-          `;
+      <tr>
+        <td colspan="7" class="empty-state">
+          Failed to load search results.
+        </td>
+      </tr>
+    `;
         }
       }
 
@@ -363,17 +348,8 @@
       // RECENT WORKSPACE
       // ============================================================
 
-      /*
-       * Requests:
-       *
-       * GET /product/recent
-       *
-       * The endpoint simply exposes the current LRU cache.
-       */
-
       async function loadRecentWorkspace() {
         const table = document.getElementById("recentOperations");
-
         const count = document.getElementById("operationCount");
 
         try {
@@ -387,16 +363,12 @@
 
           if (recentItems.length === 0) {
             table.innerHTML = `
-              <tr>
-                <td
-                  colspan="5"
-                  class="empty-state"
-                >
-                  No recent workspace activity.
-                </td>
-              </tr>
-            `;
-
+        <tr>
+          <td colspan="5" class="empty-state">
+            No recent workspace activity.
+          </td>
+        </tr>
+      `;
             return;
           }
 
@@ -405,14 +377,14 @@
               const product = item.product;
 
               return `
-                    <tr>
-                      <td>${index + 1}</td>
-                      <td>${product.id}</td>
-                      <td>${product.product_name}</td>
-                      <td>${item.operation}</td>
-                      <td>${item.time}</td>
-                    </tr>
-                  `;
+          <tr>
+            <td>${index + 1}</td>
+            <td>${product.id}</td>
+            <td>${product.product_name}</td>
+            <td>${item.operation}</td>
+            <td>${item.time}</td>
+          </tr>
+        `;
             })
             .join("");
         } catch (error) {
@@ -421,15 +393,12 @@
           count.textContent = "0 products";
 
           table.innerHTML = `
-            <tr>
-              <td
-                colspan="5"
-                class="empty-state"
-              >
-                Failed to load recent workspace.
-              </td>
-            </tr>
-          `;
+      <tr>
+        <td colspan="5" class="empty-state">
+          Failed to load recent workspace.
+        </td>
+      </tr>
+    `;
         }
       }
 
@@ -438,13 +407,20 @@
       // ============================================================
 
       /*
-       * Clicking Search immediately updates the server's
-       * currentSearchQuery.
+       * Clicking Search commits the current query.
        *
-       * The result itself is retrieved by the normal polling
-       * mechanism.
+       * Flow:
+       *
+       *     Search button
+       *          ↓
+       *     POST /search/input
+       *          ↓
+       *     currentSearchQuery updated on server
+       *          ↓
+       *     GET /search/result
+       *          ↓
+       *     performSearch()
        */
-
       searchButton.addEventListener("click", async () => {
         await updateSearchInput();
 
@@ -456,20 +432,26 @@
       // SEARCH INPUT EVENTS
       // ============================================================
 
+      /*
+       * Typing does NOT update /search/input anymore.
+       *
+       * It only requests autocomplete suggestions.
+       */
       searchInput.addEventListener("input", () => {
         const prefix = searchInput.value;
 
-        /*
-         * Update server search state.
-         */
-        debouncedSearchInput();
-
-        /*
-         * Load autocomplete suggestions.
-         */
         debouncedAutocomplete(prefix);
       });
 
+      // ============================================================
+      // ENTER KEY
+      // ============================================================
+
+      /*
+       * Pressing Enter commits the search immediately.
+       *
+       * It does NOT wait for the autocomplete debounce.
+       */
       searchInput.addEventListener("keydown", async (event) => {
         if (event.key !== "Enter") {
           return;
@@ -477,10 +459,6 @@
 
         event.preventDefault();
 
-        /*
-         * Enter bypasses the debounce and immediately
-         * updates the server.
-         */
         await updateSearchInput();
 
         recommendationBox.innerHTML = "";
@@ -491,6 +469,13 @@
       // AUTOCOMPLETE SELECTION
       // ============================================================
 
+      /*
+       * Clicking a suggestion:
+       *
+       *     1. Put the selected value into the input.
+       *     2. Hide suggestions.
+       *     3. Commit the search.
+       */
       recommendationBox.addEventListener("click", async (event) => {
         const recommendation = event.target.closest(".search-recommendation");
 
@@ -505,10 +490,6 @@
         recommendationBox.innerHTML = "";
         recommendationBox.hidden = true;
 
-        /*
-         * Immediately update the server with the
-         * selected suggestion.
-         */
         await updateSearchInput();
       });
 
