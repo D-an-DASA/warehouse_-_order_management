@@ -4,7 +4,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>DASA</title>
+
     <link rel="stylesheet" href="CSS/style.css" />
   </head>
 
@@ -26,21 +28,35 @@
 
         <section class="search-section">
           <div class="search-bar">
-            <input
-              type="text"
-              id="searchInput"
-              placeholder="Search by product ID or name..."
-              autocomplete="off"
-            />
+            <!--
+              The input and suggestion box share this wrapper.
+
+              This allows the suggestion box to be positioned
+              directly underneath the input without affecting
+              the layout of the sections below it.
+            -->
+            <div class="search-input-wrapper">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search by product ID or name..."
+                autocomplete="off"
+              />
+
+              <!--
+                Autocomplete suggestions.
+
+                This element is positioned as an overlay by CSS.
+              -->
+              <div
+                id="searchRecommendations"
+                class="search-recommendations"
+                hidden
+              ></div>
+            </div>
 
             <button id="searchButton" type="button">Search</button>
           </div>
-
-          <div
-            id="searchRecommendations"
-            class="search-recommendations"
-            hidden
-          ></div>
         </section>
 
         <!-- ========================================= -->
@@ -51,6 +67,7 @@
           <div class="section-header">
             <div>
               <h2>Retrieval Results</h2>
+
               <p>Products retrieved by priority</p>
             </div>
 
@@ -90,6 +107,7 @@
           <div class="section-header">
             <div>
               <h2>Recent Workspace</h2>
+
               <p>Recently interacted products</p>
             </div>
 
@@ -134,146 +152,99 @@
       loadHeader();
       loadNavbar();
 
-      // =========================================
-      // Recent Workspace
-      // =========================================
+      // ============================================================
+      // CONFIGURATION
+      // ============================================================
 
-      async function loadRecentWorkspace() {
-        const table = document.getElementById("recentOperations");
-        const count = document.getElementById("operationCount");
+      const SEARCH_INPUT_DEBOUNCE = 300;
+      const AUTOCOMPLETE_DEBOUNCE = 300;
 
+      const SEARCH_RESULT_POLLING = 1000;
+      const RECENT_WORKSPACE_POLLING = 2000;
+
+      // ============================================================
+      // DOM ELEMENTS
+      // ============================================================
+
+      const searchInput = document.getElementById("searchInput");
+
+      const searchButton = document.getElementById("searchButton");
+
+      const recommendationBox = document.getElementById(
+        "searchRecommendations",
+      );
+
+      // ============================================================
+      // DEBOUNCE
+      // ============================================================
+
+      function debounce(callback, delay) {
+        let timeoutId = null;
+
+        return (...args) => {
+          clearTimeout(timeoutId);
+
+          timeoutId = setTimeout(() => {
+            callback(...args);
+          }, delay);
+        };
+      }
+
+      // ============================================================
+      // SEARCH INPUT
+      // ============================================================
+
+      /*
+       * Sends the current search-bar content to:
+       *
+       * POST /search/input
+       *
+       * The server only stores the string.
+       *
+       * No search is performed here.
+       */
+
+      async function updateSearchInput() {
         try {
-          const items = await getData("/product/recent");
-
-          count.textContent = `${items.length} product${items.length !== 1 ? "s" : ""}`;
-
-          if (items.length === 0) {
-            table.innerHTML = `
-              <tr>
-                <td colspan="5" class="empty-state">
-                  No recent workspace activity.
-                </td>
-              </tr>
-            `;
-            return;
-          }
-
-          table.innerHTML = items
-            .map((item, index) => {
-              const product = item.product;
-
-              return `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${product.id}</td>
-                  <td>${product.product_name}</td>
-                  <td>${item.operation}</td>
-                  <td>${item.time}</td>
-                </tr>
-              `;
-            })
-            .join("");
+          await postText("/search/input", searchInput.value);
         } catch (error) {
-          console.error("Recent workspace error:", error);
-
-          count.textContent = "0 products";
-
-          table.innerHTML = `
-            <tr>
-              <td colspan="5" class="empty-state">
-                Failed to load recent workspace.
-              </td>
-            </tr>
-          `;
+          console.error("Search input error:", error);
         }
       }
 
-      // =========================================
-      // Retrieval Results
-      // =========================================
+      const debouncedSearchInput = debounce(
+        updateSearchInput,
+        SEARCH_INPUT_DEBOUNCE,
+      );
 
-      async function loadRetrievalResults(searchTerm = "") {
-        const table = document.getElementById("retrievalResults");
-        const count = document.getElementById("retrievalCount");
+      // ============================================================
+      // AUTOCOMPLETE
+      // ============================================================
 
-        try {
-          const products = await getData("/product/result");
-
-          let results = products.slice(0, 5);
-
-          if (searchTerm.trim() !== "") {
-            const keyword = searchTerm.trim().toLowerCase();
-
-            results = products.filter((product) => {
-              const id = product.id.toLowerCase();
-              const name = product.product_name.toLowerCase();
-
-              return id.includes(keyword) || name.includes(keyword);
-            });
-          }
-
-          count.textContent = `${results.length} product${results.length !== 1 ? "s" : ""}`;
-
-          if (results.length === 0) {
-            table.innerHTML = `
-              <tr>
-                <td colspan="7" class="empty-state">
-                  No products found.
-                </td>
-              </tr>
-            `;
-            return;
-          }
-
-          table.innerHTML = results
-            .map(
-              (product, index) => `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${product.id}</td>
-                  <td>${product.product_name}</td>
-                  <td>${product.made_date}</td>
-                  <td>${product.arrived_time}</td>
-                  <td>${product.best_by_date}</td>
-                  <td>${product.status}</td>
-                </tr>
-              `,
-            )
-            .join("");
-        } catch (error) {
-          console.error("Retrieval result error:", error);
-
-          count.textContent = "0 products";
-
-          table.innerHTML = `
-            <tr>
-              <td colspan="7" class="empty-state">
-                Failed to load retrieval results.
-              </td>
-            </tr>
-          `;
-        }
-      }
-
-      // =========================================
-      // Search Autocomplete
-      // =========================================
+      /*
+       * Requests:
+       *
+       * GET /search/autocomplete?prefix=...
+       *
+       * The request itself is debounced so that typing quickly
+       * does not generate one request per keystroke.
+       */
 
       async function loadSearchRecommendations(prefix) {
-        const recommendationBox = document.getElementById(
-          "searchRecommendations",
-        );
+        const trimmedPrefix = prefix.trim();
 
-        if (!prefix.trim()) {
+        if (!trimmedPrefix) {
           recommendationBox.innerHTML = "";
           recommendationBox.hidden = true;
           return;
         }
 
         try {
-          const suggestions = await postData("/search/autocomplete", {
-            prefix: prefix.trim(),
-          });
+          const encodedPrefix = encodeURIComponent(trimmedPrefix);
+
+          const suggestions = await getData(
+            `/search/autocomplete?prefix=${encodedPrefix}`,
+          );
 
           if (!Array.isArray(suggestions) || suggestions.length === 0) {
             recommendationBox.innerHTML = "";
@@ -284,10 +255,14 @@
           recommendationBox.innerHTML = suggestions
             .map(
               (suggestion) => `
-                <div class="search-recommendation" data-value="${suggestion}">
-                  ${suggestion}
-                </div>
-              `,
+                  <div
+                    class="search-recommendation"
+                    data-value="${suggestion}"
+                    role="option"
+                  >
+                    ${suggestion}
+                  </div>
+                `,
             )
             .join("");
 
@@ -300,51 +275,223 @@
         }
       }
 
-      // =========================================
-      // Search
-      // =========================================
+      const debouncedAutocomplete = debounce(
+        loadSearchRecommendations,
+        AUTOCOMPLETE_DEBOUNCE,
+      );
 
-      async function performSearch() {
-        const searchInput = document.getElementById("searchInput");
-        const recommendationBox = document.getElementById(
-          "searchRecommendations",
-        );
+      // ============================================================
+      // SEARCH RESULT
+      // ============================================================
 
-        const searchTerm = searchInput.value.trim();
+      /*
+       * Requests:
+       *
+       * GET /search/result
+       *
+       * The server decides whether a new search needs to be
+       * performed.
+       *
+       * The frontend only displays the returned result.
+       */
+
+      async function loadSearchResult() {
+        const table = document.getElementById("retrievalResults");
+
+        const count = document.getElementById("retrievalCount");
+
+        try {
+          const response = await getData("/search/result");
+
+          const products = Array.isArray(response.results)
+            ? response.results
+            : [];
+
+          count.textContent = `${products.length} product${
+            products.length !== 1 ? "s" : ""
+          }`;
+
+          if (products.length === 0) {
+            table.innerHTML = `
+              <tr>
+                <td
+                  colspan="7"
+                  class="empty-state"
+                >
+                  No products found.
+                </td>
+              </tr>
+            `;
+
+            return;
+          }
+
+          table.innerHTML = products
+            .map(
+              (product, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${product.id}</td>
+                    <td>${product.product_name}</td>
+                    <td>${product.made_date}</td>
+                    <td>${product.arrived_time}</td>
+                    <td>${product.best_by_date}</td>
+                    <td>${product.status}</td>
+                  </tr>
+                `,
+            )
+            .join("");
+        } catch (error) {
+          console.error("Search result error:", error);
+
+          count.textContent = "0 products";
+
+          table.innerHTML = `
+            <tr>
+              <td
+                colspan="7"
+                class="empty-state"
+              >
+                Failed to load search results.
+              </td>
+            </tr>
+          `;
+        }
+      }
+
+      // ============================================================
+      // RECENT WORKSPACE
+      // ============================================================
+
+      /*
+       * Requests:
+       *
+       * GET /product/recent
+       *
+       * The endpoint simply exposes the current LRU cache.
+       */
+
+      async function loadRecentWorkspace() {
+        const table = document.getElementById("recentOperations");
+
+        const count = document.getElementById("operationCount");
+
+        try {
+          const items = await getData("/product/recent");
+
+          const recentItems = Array.isArray(items) ? items : [];
+
+          count.textContent = `${recentItems.length} product${
+            recentItems.length !== 1 ? "s" : ""
+          }`;
+
+          if (recentItems.length === 0) {
+            table.innerHTML = `
+              <tr>
+                <td
+                  colspan="5"
+                  class="empty-state"
+                >
+                  No recent workspace activity.
+                </td>
+              </tr>
+            `;
+
+            return;
+          }
+
+          table.innerHTML = recentItems
+            .map((item, index) => {
+              const product = item.product;
+
+              return `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td>${product.id}</td>
+                      <td>${product.product_name}</td>
+                      <td>${item.operation}</td>
+                      <td>${item.time}</td>
+                    </tr>
+                  `;
+            })
+            .join("");
+        } catch (error) {
+          console.error("Recent workspace error:", error);
+
+          count.textContent = "0 products";
+
+          table.innerHTML = `
+            <tr>
+              <td
+                colspan="5"
+                class="empty-state"
+              >
+                Failed to load recent workspace.
+              </td>
+            </tr>
+          `;
+        }
+      }
+
+      // ============================================================
+      // SEARCH BUTTON
+      // ============================================================
+
+      /*
+       * Clicking Search immediately updates the server's
+       * currentSearchQuery.
+       *
+       * The result itself is retrieved by the normal polling
+       * mechanism.
+       */
+
+      searchButton.addEventListener("click", async () => {
+        await updateSearchInput();
 
         recommendationBox.innerHTML = "";
         recommendationBox.hidden = true;
+      });
 
-        await loadRetrievalResults(searchTerm);
-      }
-
-      // =========================================
-      // Search Input Events
-      // =========================================
-
-      const searchInput = document.getElementById("searchInput");
-      const searchButton = document.getElementById("searchButton");
-      const recommendationBox = document.getElementById(
-        "searchRecommendations",
-      );
+      // ============================================================
+      // SEARCH INPUT EVENTS
+      // ============================================================
 
       searchInput.addEventListener("input", () => {
-        const prefix = searchInput.value.trim();
-        loadSearchRecommendations(prefix);
+        const prefix = searchInput.value;
+
+        /*
+         * Update server search state.
+         */
+        debouncedSearchInput();
+
+        /*
+         * Load autocomplete suggestions.
+         */
+        debouncedAutocomplete(prefix);
       });
 
-      searchInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          performSearch();
+      searchInput.addEventListener("keydown", async (event) => {
+        if (event.key !== "Enter") {
+          return;
         }
+
+        event.preventDefault();
+
+        /*
+         * Enter bypasses the debounce and immediately
+         * updates the server.
+         */
+        await updateSearchInput();
+
+        recommendationBox.innerHTML = "";
+        recommendationBox.hidden = true;
       });
 
-      searchButton.addEventListener("click", () => {
-        performSearch();
-      });
+      // ============================================================
+      // AUTOCOMPLETE SELECTION
+      // ============================================================
 
-      recommendationBox.addEventListener("click", (event) => {
+      recommendationBox.addEventListener("click", async (event) => {
         const recommendation = event.target.closest(".search-recommendation");
 
         if (!recommendation) {
@@ -354,11 +501,20 @@
         const value = recommendation.dataset.value;
 
         searchInput.value = value;
+
         recommendationBox.innerHTML = "";
         recommendationBox.hidden = true;
 
-        performSearch();
+        /*
+         * Immediately update the server with the
+         * selected suggestion.
+         */
+        await updateSearchInput();
       });
+
+      // ============================================================
+      // CLOSE AUTOCOMPLETE
+      // ============================================================
 
       document.addEventListener("click", (event) => {
         const searchSection = document.querySelector(".search-section");
@@ -369,18 +525,28 @@
         }
       });
 
-      // =========================================
-      // Initial Load
-      // =========================================
+      // ============================================================
+      // INITIAL LOAD
+      // ============================================================
 
       loadRecentWorkspace();
-      loadRetrievalResults();
+      loadSearchResult();
 
-      // =========================================
-      // Refresh Recent Workspace
-      // =========================================
+      // ============================================================
+      // POLLING
+      // ============================================================
 
-      setInterval(loadRecentWorkspace, 2000);
+      /*
+       * Search result:
+       * poll every 1 second.
+       */
+      setInterval(loadSearchResult, SEARCH_RESULT_POLLING);
+
+      /*
+       * Recent workspace:
+       * poll every 2 seconds.
+       */
+      setInterval(loadRecentWorkspace, RECENT_WORKSPACE_POLLING);
     </script>
   </body>
 </html>
