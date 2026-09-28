@@ -1,544 +1,560 @@
-# DASA — Warehouse & Order Management
+# DASA — Product Search & Retrieval System
 
-## 1. Nội dung dự án
+## 1. Tổng quan dự án
 
-> **Trạng thái: Chưa triển khai**
+DASA là hệ thống **Product Search & Retrieval System** được xây dựng với mục tiêu tìm kiếm và truy xuất sản phẩm từ dataset lớn, đồng thời áp dụng các **Data Structures & Algorithms (DSA)** được tự triển khai.
 
-Dự án hướng tới việc xây dựng một hệ thống **Warehouse & Order Management**.
+Project hiện tại gồm:
 
-Phần nghiệp vụ cụ thể, logic quản lý kho, quản lý đơn hàng và cấu trúc dataset **chưa được xác định và triển khai ở giai đoạn hiện tại**.
+- C++ Backend xử lý search và retrieval.
+- Web Frontend cung cấp giao diện tìm kiếm.
+- Dataset sản phẩm gồm 10,000 và 100,000 records.
+- 4 Data Structures / Algorithms được xây dựng cho hệ thống:
+  - Hash Table
+  - Trie
+  - LRU Cache
+  - Min Heap
 
-Phần này sẽ được cập nhật khi dự án bắt đầu bước vào giai đoạn phát triển business logic.
-
----
-
-## 2. Tổng quan dự án
-
-Ở giai đoạn hiện tại, dự án tập trung xây dựng **nền tảng kỹ thuật** cho hệ thống.
-
-Kiến trúc chính gồm:
-
-- **C++ Backend** — xử lý dữ liệu phía server, validation và cập nhật dữ liệu.
-- **HTML/CSS/JavaScript Frontend** — xây dựng giao diện dashboard và giao tiếp với backend thông qua HTTP.
-- **JSON** — định dạng dữ liệu trao đổi giữa frontend và backend.
-- **HTTP API** — cung cấp các endpoint để frontend giao tiếp với C++ backend.
-
-### Kiến trúc hiện tại
-
-```mermaid
-flowchart TB
-    Frontend["HTML Dashboard<br/>CSS + JavaScript"]
-    Backend["C++ Backend<br/><br/>cpp-httplib HTTP Server<br/>JSON Parsing<br/>Data Validation<br/>Data Updating"]
-
-    Frontend <-->|"HTTP / JSON"| Backend
-```
-
-### Luồng dữ liệu hiện tại
-
-#### Cập nhật dữ liệu
-
-```mermaid
-flowchart TD
-    A["User Input"] --> B["DataInput.html"]
-    B --> C["dataInput.js"]
-    C --> D["api.js"]
-    D -->|"POST /data"| E["C++ Backend"]
-    E --> F["Parse JSON"]
-    F --> G["Validation"]
-    G --> H["Cập nhật dữ liệu phía server"]
-    H --> I["JSON Response"]
-    I --> J["JavaScript xử lý Response"]
-```
-
-#### Lấy dữ liệu cho Dashboard
-
-```mermaid
-flowchart TD
-    A["C++ Backend"] -->|"GET /data"| B["JSON"]
-    B --> C["JavaScript fetch()"]
-    C --> D["Dashboard Chart"]
-```
+Hiện tại phần HTTP server và frontend đã hoạt động. Phần **kết nối và phối hợp 4 DSA thành search pipeline hoàn chỉnh vẫn đang được phát triển**.
 
 ---
 
-## 3. Cấu trúc thư mục hiện tại
+# 2. Kiến trúc hệ thống
+
+Project được chia thành ba phần chính:
+
+```mermaid
+flowchart LR
+
+    A["Web Frontend<br/>HTML + CSS + JavaScript"]
+    B["C++ Backend<br/>HTTP Server"]
+    C["Search / DSA Core"]
+    D["Product Dataset"]
+    E["Hash Table<br/>Trie<br/>Min Heap<br/>LRU Cache"]
+
+    A <-->|"HTTP / JSON"| B
+    B --> C
+    C --> D
+    C --> E
+```
+
+### Web Frontend
+
+Cung cấp giao diện để:
+
+- Nhập search query.
+- Hiển thị autocomplete suggestions.
+- Hiển thị search results.
+- Hiển thị các sản phẩm được tương tác gần đây.
+
+### C++ Backend
+
+Đóng vai trò HTTP server và xử lý request từ frontend.
+
+Backend hiện cung cấp các API phục vụ:
+
+- Search input.
+- Autocomplete.
+- Search result.
+- Recent interacted products.
+
+### Search / DSA Core
+
+Đây là phần đang được phát triển.
+
+Nó sẽ chịu trách nhiệm xác định cách các DSA được sử dụng và phối hợp để xử lý search và retrieval.
+
+---
+
+# 3. Giao diện hiện tại
+
+Frontend hiện tại gồm:
+
+- Search bar.
+- Search button.
+- Autocomplete suggestion box.
+- Retrieval Results.
+- Recent Workspace.
+
+[add current web here]
+
+### Retrieval Results
+
+Hiển thị các sản phẩm được trả về từ search.
+
+Thông tin hiện tại gồm:
+
+- Order
+- Product ID
+- Product Name
+- Made Date
+- Arrived Time
+- Best By Date
+- Status
+
+### Recent Workspace
+
+Hiển thị các sản phẩm được tương tác gần đây thông qua LRU Cache.
+
+Thông tin hiện tại gồm:
+
+- Order
+- Product ID
+- Product Name
+- Operation
+- Time
+
+---
+
+# 4. Search System
+
+Project hiện hỗ trợ hai search mode chính:
+
+### Product ID Search
+
+Sử dụng product ID để tìm kiếm chính xác một sản phẩm.
+
+User-facing convention:
+
+```text
+#P00005
+```
+
+Search này được thiết kế để sử dụng **Hash Table** trong phiên bản hoàn chỉnh.
+
+### Product Name Search
+
+Cho phép tìm sản phẩm dựa trên tên.
+
+Autocomplete cũng được cung cấp khi user nhập prefix của product name.
+
+Ví dụ:
+
+```text
+lap
+```
+
+có thể đưa ra suggestion:
+
+```text
+Laptop Stand
+```
+
+Autocomplete được thiết kế để sử dụng **Trie** trong phiên bản hoàn chỉnh.
+
+---
+
+# 5. Backend API
+
+Backend hiện có 4 endpoint chính:
+
+```text
+GET  /product/recent
+POST /search/input
+GET  /search/autocomplete
+GET  /search/result
+```
+
+### `POST /search/input`
+
+Nhận search string hiện tại từ frontend.
+
+Endpoint này chỉ cập nhật search query hiện tại; việc xử lý search result được thực hiện thông qua search-result workflow.
+
+### `GET /search/autocomplete`
+
+Nhận một prefix và trả về các product-name suggestions.
+
+```text
+/search/autocomplete?prefix=lap
+```
+
+### `GET /search/result`
+
+Trả về search result hiện tại.
+
+### `GET /product/recent`
+
+Trả về danh sách các sản phẩm được tương tác gần đây từ LRU Cache.
+
+---
+
+# 6. Data Structures & Algorithms
+
+Các DSA được đặt trong:
+
+```text
+cpp/DSAcore/
+```
+
+Project hiện có 4 implementation chính:
+
+```text
+Hash Table
+Trie
+LRU Cache
+Min Heap
+```
+
+---
+
+## 6.1 Hash Table
+
+Location:
+
+```text
+cpp/DSAcore/hashtable/
+```
+
+Hash Table được **xây dựng từ scratch** cho workflow tìm kiếm sản phẩm theo ID.
+
+### Input
+
+```text
+product_id
+```
+
+### Output
+
+```text
+Product
+```
+
+Ví dụ:
+
+```text
+P00005
+   ↓
+Product
+```
+
+Hash Table được thiết kế chuyên biệt cho product-ID workflow.
+
+Nó không được sử dụng bên trong LRU Cache vì LRU Cache cần một lookup structure tổng quát hơn; LRU hiện sử dụng `unordered_map` của C++ kết hợp với doubly linked list tự xây dựng.
+
+---
+
+## 6.2 Trie
+
+Location:
+
+```text
+cpp/DSAcore/trie/
+```
+
+Trie được **xây dựng từ scratch** để xử lý prefix-based search và autocomplete.
+
+### Input
+
+```text
+string prefix
+```
+
+### Output
+
+```text
+vector<string> product_id
+```
+
+Trie được sử dụng để tìm các product phù hợp với prefix của search query.
+
+Ví dụ:
+
+```text
+"lap"
+   ↓
+Trie
+   ↓
+Matching products
+```
+
+---
+
+## 6.3 LRU Cache
+
+Location:
+
+```text
+cpp/DSAcore/LRU_Cache/
+```
+
+LRU Cache dùng để lưu lại **N sản phẩm được tương tác gần đây nhất**.
+
+LRU được xây dựng bằng:
+
+- Doubly linked list tự implement.
+- `unordered_map` của C++.
+
+### Input
+
+```text
+Product + operation
+```
+
+### Output
+
+```text
+vector<Product>
+```
+
+theo thứ tự từ **most recently used** đến **least recently used**.
+
+LRU Cache hiện đang được sử dụng bởi backend để xây dựng **Recent Workspace**.
+
+---
+
+## 6.4 Min Heap
+
+Location:
+
+```text
+cpp/DSAcore/Min_heap/
+```
+
+Min Heap được **xây dựng từ scratch** để phục vụ workflow retrieval dựa trên priority.
+
+### Input
+
+```text
+product_name
+```
+
+### Output
+
+```text
+vector<Product>
+```
+
+Vai trò cuối cùng của Min Heap trong hệ thống vẫn đang được team đánh giá và có thể thay đổi khi search workflow hoàn thiện.
+
+---
+
+# 7. DSA Requirement
+
+Một trong các requirement của project là phải có **ít nhất 2 Data Structures được xây dựng từ scratch**.
+
+Project hiện tại đã có 4 implementation:
+
+```text
+Hash Table
+Trie
+LRU Cache
+Min Heap
+```
+
+Trong đó:
+
+- Hash Table được xây dựng từ scratch.
+- Trie được xây dựng từ scratch.
+- Doubly Linked List bên trong LRU Cache được xây dựng từ scratch.
+- Min Heap được xây dựng từ scratch.
+
+Các container có sẵn của C++ như `vector` và `unordered_map` chỉ được sử dụng như những thành phần hỗ trợ, không thay thế cho các DSA chính được project implement.
+
+---
+
+# 8. Benchmark Dataset
+
+Project hiện có hai dataset:
+
+```text
+cpp/product_inventory_10 000.csv
+cpp/product_inventory_100 000.csv
+```
+
+| Dataset                         | Số lượng sản phẩm |
+| ------------------------------- | ----------------: |
+| `product_inventory_10 000.csv`  |            10,000 |
+| `product_inventory_100 000.csv` |           100,000 |
+
+Các dataset hiện tại được sử dụng cho mục đích **benchmark và đánh giá search system**.
+
+Dataset hiện đang ở trạng thái **read-only**.
+
+Hệ thống chưa có chức năng chỉnh sửa hoặc ghi ngược dữ liệu vào CSV.
+
+---
+
+# 9. Current Search Flow
+
+Search flow hiện tại được xây dựng theo hướng:
+
+```mermaid
+flowchart TD
+
+    A["User Search Query"] --> B["Frontend"]
+    B --> C["HTTP API"]
+    C --> D["C++ Backend"]
+    D --> E["Search Core"]
+    E --> F["Search Result"]
+    F --> G["Frontend"]
+```
+
+Trong phiên bản hiện tại, `server.cpp` vẫn sử dụng search logic tạm thời để kiểm tra frontend/backend architecture.
+
+Ví dụ, search hiện tại có thể trực tiếp duyệt product list để tìm product phù hợp.
+
+Các DSA đã được implement nhưng **chưa được tích hợp hoàn chỉnh vào search core**.
+
+---
+
+# 10. Planned DSA Integration
+
+Kiến trúc dự kiến sẽ kết hợp các DSA như sau:
+
+```mermaid
+flowchart TD
+
+    A["Search Query"]
+
+    A --> B{"Search Mode"}
+
+    B -->|"Product ID"| C["Hash Table"]
+    B -->|"Product Name / Prefix"| D["Trie"]
+
+    C --> E["Product Candidates"]
+    D --> E
+
+    E --> F["Search / Retrieval Core"]
+
+    F --> G["Priority Retrieval"]
+    G --> H["Min Heap"]
+
+    F --> I["Recent Interaction"]
+    I --> J["LRU Cache"]
+
+    H --> K["Final Result"]
+    J --> K
+```
+
+Chi tiết về cách các DSA sẽ phối hợp vẫn chưa được finalized.
+
+Phần này là **main unfinished component** của project hiện tại.
+
+---
+
+# 11. Current Limitations
+
+Các phần hiện chưa hoàn thiện:
+
+### DSA Integration
+
+4 DSA chưa được kết nối thành một search/retrieval pipeline hoàn chỉnh.
+
+### Filtering
+
+Filtering theo range hoặc các thuộc tính sản phẩm chưa được triển khai.
+
+### Pruning
+
+Search-space pruning hiện đang được cân nhắc nhưng chưa được implement.
+
+### Dataset Modification
+
+Dataset CSV hiện chỉ được sử dụng để đọc dữ liệu.
+
+Chưa có chức năng:
+
+- Add product.
+- Remove product.
+- Update product.
+- Persist thay đổi vào dataset.
+
+### Min Heap Workflow
+
+Vai trò chính xác của Min Heap trong retrieval workflow vẫn có thể được thay đổi sau khi team thống nhất search design.
+
+---
+
+# 12. Project Structure
 
 ```text
 DASA/
 │
-├── index.html
-├── DataInput.html
+├── cpp/
+│   │
+│   ├── DSAcore/
+│   │   ├── hashtable/
+│   │   │   ├── hashtable.cpp
+│   │   │   ├── hashtable.h
+│   │   │   └── hashtabletest.cpp
+│   │   │
+│   │   ├── LRU_Cache/
+│   │   │   ├── LRU_Cache.h
+│   │   │   └── LRU_CacheTest.cpp
+│   │   │
+│   │   ├── Min_heap/
+│   │   │   ├── Min_heap.cpp
+│   │   │   ├── Min_heap.h
+│   │   │   └── Min_heaptest.cpp
+│   │   │
+│   │   ├── trie/
+│   │   │   ├── trie.cpp
+│   │   │   ├── trie.h
+│   │   │   └── trietest.cpp
+│   │   │
+│   │   └── Product.h
+│   │
+│   ├── src/
+│   │   ├── httplib.h
+│   │   └── json.hpp
+│   │
+│   ├── product_inventory_10 000.csv
+│   ├── product_inventory_100 000.csv
+│   ├── server.cpp
+│   └── server.exe
 │
-├── CSS/
-│   └── style.css
-│
-├── JavaScript/
-│   ├── app.js
-│   ├── header.js
-│   ├── navbar.js
-│   ├── sidebar.js
-│   ├── dashboardChart.js
-│   ├── dataInput.js
-│   └── api.js
-│
-└── cpp/
-    ├── server.cpp
-    ├── httplib.h
-    └── json.hpp
+└── web/
+    │
+    ├── CSS/
+    │   └── style.css
+    │
+    ├── JavaScript/
+    │   ├── api.js
+    │   └── app.js
+    │
+    └── index.html
 ```
 
 ---
 
-# 4. Chức năng của từng file
+# 13. Development Status
 
-## Root
-
-### `index.html`
-
-Trang Dashboard chính của hệ thống.
-
-Chức năng:
-
-- Xây dựng cấu trúc HTML của Dashboard.
-- Chứa khu vực nội dung chính.
-- Chứa các container dành cho chart và các thành phần hiển thị dữ liệu.
-- Load các JavaScript module cần thiết.
-- Khởi tạo các thành phần giao diện dùng chung.
-
----
-
-### `DataInput.html`
-
-Trang nhập và cập nhật dữ liệu.
-
-Chức năng:
-
-- Cung cấp giao diện nhập dữ liệu.
-- Cho phép chọn `category`.
-- Cho phép nhập `amount`.
-- Cung cấp thao tác **Add** và **Remove**.
-- Load các JavaScript cần thiết để giao tiếp với backend.
-
-Luồng hiện tại:
-
-```mermaid
-flowchart TD
-    A["User"] --> B["Chọn Category"]
-    B --> C["Nhập Amount"]
-    C --> D["Add / Remove"]
-    D --> E["Client-side Validation"]
-    E -->|"Valid"| F["POST /data"]
-```
+| Component               | Status             |
+| ----------------------- | ------------------ |
+| Web Interface           | ✅ Implemented     |
+| C++ HTTP Server         | ✅ Implemented     |
+| Product Model           | ✅ Implemented     |
+| 10,000 Product Dataset  | ✅ Available       |
+| 100,000 Product Dataset | ✅ Available       |
+| Hash Table              | ✅ Implemented     |
+| Trie                    | ✅ Implemented     |
+| LRU Cache               | ✅ Implemented     |
+| Min Heap                | ✅ Implemented     |
+| Product ID Search       | 🟡 Prototype       |
+| Product Name Search     | 🟡 Prototype       |
+| Autocomplete            | 🟡 Prototype       |
+| DSA Integration         | 🔴 In Progress     |
+| Filtering               | 🔴 Not Implemented |
+| Pruning                 | 🔴 Not Implemented |
+| Dataset Modification    | 🔴 Not Implemented |
 
 ---
 
-# 5. CSS
-
-## `CSS/style.css`
-
-File CSS dùng chung cho frontend.
-
-Chức năng:
-
-- Styling cho layout của Dashboard.
-- Styling cho sidebar.
-- Styling cho header/navbar.
-- Các style dùng chung cho giao diện.
-
-Ở giai đoạn hiện tại, một số styling riêng của từng chart có thể được đặt trực tiếp trong HTML nếu phù hợp.
-
----
-
-# 6. JavaScript
-
-## `JavaScript/app.js`
-
-File dành cho các logic ở cấp độ application.
-
-Chức năng:
-
-- Xử lý các hành vi/layout chung của application.
-- Chứa các logic không thuộc riêng một page hoặc component cụ thể.
-
-**Chart logic không nên đặt trong file này.**
-
-Chart logic được tách riêng trong:
-
-```text
-dashboardChart.js
-```
-
----
-
-## `JavaScript/header.js`
-
-Xử lý component **Header**.
-
-Chức năng:
-
-- Tạo/load Header dùng chung cho các trang frontend.
-
----
-
-## `JavaScript/navbar.js`
-
-Xử lý component **Navbar**.
-
-Chức năng:
-
-- Tạo/load Navbar dùng chung cho các trang frontend.
-
----
-
-## `JavaScript/sidebar.js`
-
-Xử lý component **Sidebar**.
-
-Chức năng:
-
-- Tạo/load Sidebar.
-- Xác định trạng thái navigation hiện tại.
-
-Ví dụ:
-
-```javascript
-loadSidebar("home");
-loadSidebar("dataInput");
-```
-
----
-
-## `JavaScript/dashboardChart.js`
-
-Chứa logic liên quan đến các chart trên Dashboard.
-
-Chức năng:
-
-- Gửi request tới C++ backend để lấy dữ liệu.
-- Nhận và xử lý JSON.
-- Tách `labels` và `values` từ dữ liệu.
-- Tạo và cấu hình chart.
-
-Chart hiện tại sử dụng **Chart.js**.
-
-Logic của chart được tách khỏi `app.js` để mỗi file giữ đúng trách nhiệm của nó.
-
----
-
-## `JavaScript/dataInput.js`
-
-Xử lý logic của trang `DataInput.html`.
-
-Chức năng:
-
-- Đọc input từ người dùng.
-- Thực hiện client-side validation.
-- Tạo request payload.
-- Gửi thao tác Add/Remove thông qua `api.js`.
-- Nhận và xử lý response từ backend.
-- Hiển thị thông báo thành công/lỗi cho người dùng.
-
-Payload hiện tại:
-
-```json
-{
-  "category": "C",
-  "amount": 50,
-  "operation": "add"
-}
-```
-
-Client-side validation là **lớp validation đầu tiên**.
-
-Backend vẫn là nơi chịu trách nhiệm validation chính thức.
-
----
-
-## `JavaScript/api.js`
-
-Đây là lớp giao tiếp giữa frontend và backend.
-
-**Lưu ý:** `api.js` không phải là một backend server và cũng không tạo ra một API server mới.
-
-Nhiệm vụ của file này là tập trung các thao tác HTTP giữa JavaScript và C++ backend.
-
-Chức năng hiện tại:
-
-- Gửi HTTP request.
-- Chuyển JavaScript object thành JSON.
-- Nhận JSON response từ backend.
-- Parse response để JavaScript sử dụng.
-
-Endpoint cập nhật hiện tại:
-
-```text
-POST http://localhost:8080/data
-```
-
----
-
-# 7. C++ Backend
-
-## `cpp/server.cpp`
-
-File chính của backend/server.
-
-Chức năng:
-
-- Khởi động HTTP server.
-- Định nghĩa các API endpoint.
-- Lưu trữ dữ liệu hiện tại phía server.
-- Parse JSON request.
-- Validation request.
-- Thực hiện các thao tác Add/Remove.
-- Trả JSON response về frontend.
-
-Server hiện tại chạy tại:
-
-```text
-http://localhost:8080
-```
-
-Các endpoint hiện tại:
-
-```text
-GET  /data
-POST /data
-```
-
----
-
-### `GET /data`
-
-Dùng để lấy dataset hiện tại từ server.
-
-Ví dụ response:
-
-```json
-[
-  { "category": "A", "value": 120 },
-  { "category": "B", "value": 180 },
-  { "category": "C", "value": 300 },
-  { "category": "D", "value": 220 }
-]
-```
-
----
-
-### `POST /data`
-
-Dùng để gửi yêu cầu cập nhật dữ liệu.
-
-Ví dụ request:
-
-```json
-{
-  "category": "C",
-  "amount": 50,
-  "operation": "add"
-}
-```
-
-Các operation hiện tại:
-
-```text
-add
-remove
-```
-
-Backend sẽ validation request trước khi thực sự thay đổi dữ liệu.
-
-Ví dụ:
-
-```text
-C = 300
-
-remove 50
-→ C = 250
-
-remove 500
-→ Reject
-→ C vẫn = 300
-```
-
-**Một request được server nhận không có nghĩa operation đã được chấp nhận.**
-
----
-
-## `cpp/httplib.h`
-
-Single-header library của **cpp-httplib**.
-
-Được sử dụng để xây dựng HTTP server trong `server.cpp`.
-
-Được include bằng:
-
-```cpp
-#include "httplib.h"
-```
-
----
-
-## `cpp/json.hpp`
-
-Single-header library của **nlohmann/json**.
-
-Được sử dụng để parse và xử lý JSON ở C++ backend.
-
-Được sử dụng bằng:
-
-```cpp
-#include "json.hpp"
-
-using json = nlohmann::json;
-```
-
----
-
-# 8. Kiến trúc Validation
-
-Project hiện tại sử dụng **hai lớp validation**.
-
-```mermaid
-flowchart TD
-    A["User Input"]
-    B["Client-side Validation"]
-    C["POST Request"]
-    D["Backend Validation"]
-    E["Accept"]
-    F["Reject"]
-
-    A --> B
-    B -->|"PASS"| C
-    C --> D
-    D -->|"PASS"| E
-    D -->|"FAIL"| F
-```
-
-## Client-side Validation
-
-Được thực hiện trong:
-
-```text
-JavaScript/dataInput.js
-```
-
-Mục đích là phát hiện những input cơ bản không hợp lệ trước khi gửi request.
-
-Ví dụ:
-
-- Amount không phải số.
-- Amount <= 0.
-- Category không hợp lệ/không tồn tại ở phía client.
-
----
-
-## Backend Validation
-
-Được thực hiện trong:
-
-```text
-cpp/server.cpp
-```
-
-Backend là **nguồn validation có thẩm quyền** đối với dữ liệu.
-
-Ví dụ:
-
-- Amount phải lớn hơn 0.
-- Category phải tồn tại.
-- Operation phải hợp lệ.
-- `remove` không được làm giá trị nhỏ hơn 0.
-
-Do đó:
-
-```mermaid
-flowchart TD
-    A["Client validation PASS"]
-    B["Request được gửi"]
-    C["Backend validation FAIL"]
-    D["Operation bị reject"]
-
-    A --> B
-    B --> C
-    C --> D
-```
-
-Đây là hành vi bình thường và cần được duy trì khi phát triển hệ thống.
-
----
-
-# 9. Nguyên tắc phát triển
-
-Project hiện tại được phát triển theo từng bước.
-
-Nguyên tắc ưu tiên:
-
-```mermaid
-flowchart LR
-    A["Understand"] --> B["Build"]
-    B --> C["Test"]
-    C --> D["Measure"]
-    D --> E["Optimize"]
-```
-
-Không nên thêm các optimization hoặc architectural complexity khi chưa có nhu cầu thực tế.
-
-Dataset `A/B/C/D` hiện tại chỉ là **prototype dataset** dùng để kiểm tra architecture và data flow.
-
-Nó **không phải final business data model** của hệ thống.
-
----
-
-# 10. Định hướng phát triển trong tương lai
-
-Project cuối cùng dự kiến sẽ xử lý dataset lớn hơn đáng kể, có thể bao gồm:
-
-- 1000+ records/elements.
-- Nhiều attributes trên mỗi record.
-- Các quan hệ dữ liệu phức tạp hơn.
-- Warehouse management logic.
-- Order management logic.
-
-Khi dataset và business logic phát triển, các vấn đề có thể cần xem xét:
-
-- Efficient data retrieval.
-- Partial update.
-- Filtering và querying.
-- Pagination.
-- Caching.
-- Data aggregation.
-- Frontend rendering performance.
-
-Các vấn đề trên là **future considerations**, chưa phải yêu cầu của prototype hiện tại.
-
-Không nên tối ưu chúng trước khi có requirement hoặc measurement thực tế.
-
----
-
-# 11. Quy tắc phân chia trách nhiệm
-
-Khi phát triển thêm project, nên duy trì separation of responsibilities:
-
-```mermaid
-flowchart TD
-    HTML["HTML<br/>Cấu trúc trang"]
-    CSS["CSS<br/>Giao diện và styling"]
-    JS["JavaScript<br/>Frontend behavior"]
-    API["api.js<br/>Frontend ↔ Backend communication"]
-    SERVER["server.cpp<br/>Backend logic + validation + data processing"]
-
-    HTML --> JS
-    CSS --> HTML
-    JS --> API
-    API --> SERVER
-```
-
-Ví dụ:
-
-- Không đưa business logic của C++ vào JavaScript nếu không cần thiết.
-- Không đưa chart logic vào `app.js`.
-- Không biến `api.js` thành một server mới.
-- Backend vẫn phải tự validation request, không phụ thuộc hoàn toàn vào client-side validation.
-
----
+# 14. Future Development
+
+The next major step is to complete the **Search / DSA Core** and determine how the four implemented structures should interact.
+
+Potential future features include:
+
+- Trie-based autocomplete.
+- Hash Table-based exact ID search.
+- Priority-based retrieval using Min Heap.
+- Real search interactions updating the LRU Cache.
+- Search filtering.
+- Search-space pruning.
+- Benchmarking across 10,000 and 100,000 products.
+- Search-time measurement.
+- Displaying the currently active benchmark dataset.
+
+These features will be added according to the final requirements and search workflow agreed upon by the team.
