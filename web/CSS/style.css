@@ -43,13 +43,9 @@ APPLICATION HEADER
   flex-shrink: 0;
 }
 
-/* Application logo */
-
 .app-logo {
   font-size: 24px;
 }
-
-/* Application name */
 
 .app-name {
   margin-left: 12px;
@@ -73,8 +69,6 @@ TOP NAVIGATION
   flex-shrink: 0;
 }
 
-/* Navigation buttons */
-
 .nav-button {
   display: flex;
   align-items: center;
@@ -90,8 +84,6 @@ TOP NAVIGATION
     background 0.15s ease,
     color 0.15s ease;
 }
-
-/* Navigation hover */
 
 .nav-button:hover {
   background: #1a2638;
@@ -112,8 +104,6 @@ MAIN CONTENT
   overflow: auto;
 }
 
-/* Dashboard title */
-
 .main-content h1 {
   margin: 0 0 24px;
   color: #d6d9e0;
@@ -129,15 +119,11 @@ SEARCH SECTION
   margin-bottom: 32px;
 }
 
-/* Search bar */
-
 .search-bar {
   display: flex;
   width: 100%;
   gap: 10px;
 }
-
-/* Search input */
 
 .search-bar input {
   flex: 1;
@@ -159,9 +145,8 @@ SEARCH SECTION
   border-color: #667a9d;
 }
 
-/* Search button */
-
 .search-bar button {
+  flex-shrink: 0;
   padding: 12px 20px;
   border: none;
   border-radius: 8px;
@@ -183,16 +168,84 @@ SEARCH SECTION
 }
 
 /* =========================
+SEARCH INPUT WRAPPER
+========================= */
+
+.search-input-wrapper {
+  display: flex;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* =========================
 SEARCH RECOMMENDATIONS
 ========================= */
 
 .search-recommendations {
+  position: absolute;
+
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+
+  z-index: 1000;
+
   width: 100%;
-  margin-top: 8px;
+  max-height: 240px;
+
+  overflow-y: auto;
+
   border: 1px solid #34445c;
   border-radius: 8px;
+
   background: #111827;
-  overflow: hidden;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* =========================
+SEARCH RECOMMENDATION ROW
+========================= */
+
+.search-recommendation {
+  width: 100%;
+
+  padding: 11px 14px;
+
+  color: #d6d9e0;
+  background: transparent;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Hover */
+
+.search-recommendation:hover {
+  background: #182235;
+  color: #ffffff;
+}
+
+/* Active / selected row */
+
+.search-recommendation:active {
+  background: #24344d;
+}
+
+/* Remove unnecessary spacing from first/last item */
+
+.search-recommendation:first-child {
+  border-radius: 7px 7px 0 0;
+}
+
+.search-recommendation:last-child {
+  border-radius: 0 0 7px 7px;
 }
 
 /* =========================
@@ -208,8 +261,6 @@ RECENT OPERATIONS
   border-radius: 12px;
 }
 
-/* Section header */
-
 .recent-operations-section .section-header {
   display: flex;
   align-items: center;
@@ -217,23 +268,17 @@ RECENT OPERATIONS
   margin-bottom: 20px;
 }
 
-/* Section title */
-
 .recent-operations-section h2 {
   margin: 0;
   color: #e5e9f0;
   font-size: 20px;
 }
 
-/* Section description */
-
 .recent-operations-section .section-header p {
   margin: 4px 0 0;
   color: #7f8ba1;
   font-size: 14px;
 }
-
-/* Operation count */
 
 .operation-count {
   padding: 6px 10px;
@@ -243,8 +288,6 @@ RECENT OPERATIONS
   font-size: 13px;
   white-space: nowrap;
 }
-
-/* Table container */
 
 .recent-operations-container {
   width: 100%;
@@ -262,8 +305,6 @@ RECENT OPERATIONS TABLE
   font-size: 14px;
 }
 
-/* Table header */
-
 .recent-operations-table th {
   padding: 12px 16px;
   text-align: left;
@@ -275,8 +316,6 @@ RECENT OPERATIONS TABLE
   border-right: 1px solid #263244;
 }
 
-/* Table cells */
-
 .recent-operations-table td {
   padding: 15px 16px;
   color: #d6d9e0;
@@ -285,20 +324,10 @@ RECENT OPERATIONS TABLE
   border-right: 1px solid #263244;
 }
 
-/* =========================
-TABLE VERTICAL LINES
-========================= */
-
-/* Remove vertical line from the last column */
-
 .recent-operations-table th:last-child,
 .recent-operations-table td:last-child {
   border-right: none;
 }
-
-/* =========================
-ORDER COLUMN
-========================= */
 
 .recent-operations-table th:first-child,
 .recent-operations-table td:first-child {
@@ -306,61 +335,33 @@ ORDER COLUMN
   text-align: center;
 }
 
-/* =========================
-TIME COLUMN
-========================= */
-
 .recent-operations-table th:nth-child(2),
 .recent-operations-table td:nth-child(2) {
   text-align: center;
   white-space: nowrap;
 }
 
-/* =========================
-OPERATION COLUMN
-========================= */
-
 .recent-operations-table td:nth-child(3) {
   font-weight: 600;
 }
-
-/* =========================
-RESULT COLUMN
-========================= */
 
 .recent-operations-table td:nth-child(4) {
   font-weight: 500;
 }
 
-/* =========================
-LAST ROW
-========================= */
-
 .recent-operations-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* =========================
-ROW HOVER
-========================= */
-
 .recent-operations-table tbody tr:hover {
   background: #182235;
 }
-
-/* =========================
-EMPTY STATE
-========================= */
 
 .empty-state {
   padding: 32px 16px !important;
   text-align: center !important;
   color: #7f8ba1 !important;
 }
-
-/* =========================
-CONTENT PLACEHOLDER
-========================= */
 
 .content-placeholder {
   padding: 20px;
@@ -409,13 +410,5 @@ RESPONSIVE
     align-items: flex-start;
     gap: 12px;
     flex-direction: column;
-  }
-
-  .search-bar {
-    flex-direction: column;
-  }
-
-  .search-bar button {
-    width: 100%;
   }
 }
