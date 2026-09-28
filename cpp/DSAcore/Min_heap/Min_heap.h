@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "Product.h"
+#include "../Product.h"
 using namespace std;
 vector<string> splistCSV(const string& line);
 bool uutien(const Product* a, const Product* b);
