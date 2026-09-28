@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <mutex>
 #include <algorithm>
+#include <cctype>
 
 #include "src/httplib.h"
 #include "src/json.hpp"
@@ -12,10 +14,23 @@ using namespace httplib;
 using json = nlohmann::json;
 
 // ============================================================
-// GLOBAL LRU CACHE
+// GLOBAL STATE
 // ============================================================
 
 LRU_Cache recentCache;
+
+// Current text inside the user's search box.
+string currentSearchQuery;
+
+// The query that was used to generate currentSearchResult.
+string lastProcessedQuery;
+
+// Current search result.
+json currentSearchResult = json::array();
+
+// Protect shared search state because HTTP handlers
+// may be executed concurrently.
+mutex searchMutex;
 
 // ============================================================
 // MOCK PRODUCT DATA
@@ -34,7 +49,7 @@ vector<Product> products = {
     {"P00010", "USB Cable", "2024-04-21", "2024-05-19 03:24:17", "2026-12-05", "RESERVED"}};
 
 // ============================================================
-// HELPER: PRODUCT -> JSON
+// HELPER FUNCTIONS
 // ============================================================
 
 json productToJson(const Product &product)
@@ -49,7 +64,7 @@ json productToJson(const Product &product)
 }
 
 // ============================================================
-// MOCK LRU DATA
+// MOCK LRU OPERATIONS
 // ============================================================
 
 void setupMockOperations()
@@ -76,6 +91,84 @@ void setupMockOperations()
 }
 
 // ============================================================
+// SEARCH LOGIC
+// ============================================================
+//
+// This function represents the CORE search layer.
+//
+// Right now it uses simple mock searching so that the HTTP
+// architecture can be tested.
+//
+// Later this is where we can connect:
+//
+//     Trie
+//     HashTable
+//     conflict resolution
+//     sorting
+//     other algorithms
+//
+// The server should eventually only call this function.
+// It should NOT know how Trie or HashTable work.
+// ============================================================
+
+json performSearch(const string &query)
+{
+    json results = json::array();
+
+    if (query.empty())
+        return results;
+
+    // --------------------------------------------------------
+    // ID SEARCH
+    // --------------------------------------------------------
+    //
+    // "#" is a user-facing convention.
+    //
+    // Example:
+    //      #P00005
+    //
+    // The Core interprets this as an ID query.
+    // Later this branch can call HashTable.
+    // --------------------------------------------------------
+
+    if (query[0] == '#')
+    {
+        string id = query.substr(1);
+
+        for (const auto &product : products)
+        {
+            if (product.id == id)
+            {
+                results.push_back(productToJson(product));
+                break;
+            }
+        }
+
+        return results;
+    }
+
+    // --------------------------------------------------------
+    // NAME SEARCH
+    // --------------------------------------------------------
+    //
+    // Temporary implementation.
+    //
+    // Later this is where the Core can use Trie / HashTable
+    // and resolve whatever interaction our project requires.
+    // --------------------------------------------------------
+
+    for (const auto &product : products)
+    {
+        if (product.product_name == query)
+        {
+            results.push_back(productToJson(product));
+        }
+    }
+
+    return results;
+}
+
+// ============================================================
 // CORS
 // ============================================================
 
@@ -84,10 +177,14 @@ void setupCORS(Server &server)
     server.set_pre_routing_handler(
         [](const Request &req, Response &res)
         {
-            res.set_header("Access-Control-Allow-Origin", "*");
+            res.set_header(
+                "Access-Control-Allow-Origin",
+                "*");
+
             res.set_header(
                 "Access-Control-Allow-Methods",
-                "GET, OPTIONS");
+                "GET, POST, OPTIONS");
+
             res.set_header(
                 "Access-Control-Allow-Headers",
                 "Content-Type");
@@ -104,8 +201,15 @@ void setupCORS(Server &server)
 
 // ============================================================
 // GET /product/recent
+// ============================================================
 //
-// Returns recent operations stored in the LRU cache.
+// Frontend polls this endpoint periodically.
+//
+// Example:
+//
+//     GET /product/recent
+//
+// The server reads the current LRU cache and returns it.
 // ============================================================
 
 void setupRecentProductEndpoint(Server &server)
@@ -135,15 +239,54 @@ void setupRecentProductEndpoint(Server &server)
 }
 
 // ============================================================
-// GET /search/autocomplete?prefix={prefix}
+// POST /search/input
+// ============================================================
 //
-// Called while the user is typing.
+// This endpoint receives ONLY the current search-bar string.
 //
-// Later:
-//     prefix -> Trie -> suggestions
+// Example:
 //
-// Currently:
-//     mock prefix search
+//     POST /search/input
+//
+//     "lap"
+//
+// There is intentionally NO response body.
+//
+// The server simply updates:
+//
+//     currentSearchQuery
+//
+// The actual search result is NOT calculated here.
+// ============================================================
+
+void setupSearchInputEndpoint(Server &server)
+{
+    server.Post(
+        "/search/input",
+        [](const Request &req, Response &res)
+        {
+            lock_guard<mutex> lock(searchMutex);
+
+            currentSearchQuery = req.body;
+
+            // No response body.
+            res.status = 204;
+        });
+}
+
+// ============================================================
+// GET /search/autocomplete
+// ============================================================
+//
+// Example:
+//
+//     GET /search/autocomplete?prefix=lap
+//
+// This endpoint immediately returns suggestions.
+//
+// For now we perform a simple prefix search.
+//
+// Later this will call Trie.
 // ============================================================
 
 void setupAutocompleteEndpoint(Server &server)
@@ -152,7 +295,6 @@ void setupAutocompleteEndpoint(Server &server)
         "/search/autocomplete",
         [](const Request &req, Response &res)
         {
-            // Check whether prefix was provided
             if (!req.has_param("prefix"))
             {
                 json response = {
@@ -170,44 +312,61 @@ void setupAutocompleteEndpoint(Server &server)
 
             string prefix = req.get_param_value("prefix");
 
-            vector<json> suggestions;
+            vector<string> suggestions;
 
             // ------------------------------------------------
-            // MOCK TRIE BEHAVIOR
+            // Temporary prefix search.
+            //
+            // Later:
+            //
+            //     Trie -> suggestions
             // ------------------------------------------------
 
             for (const auto &product : products)
             {
-                if (
-                    product.product_name.size() >= prefix.size() &&
-                    equal(
-                        prefix.begin(),
-                        prefix.end(),
-                        product.product_name.begin(),
-                        [](char a, char b)
-                        {
-                            return tolower(a) == tolower(b);
-                        }))
+                if (product.product_name.size() < prefix.size())
+                    continue;
+
+                bool matches = true;
+
+                for (size_t i = 0; i < prefix.size(); ++i)
                 {
-                    bool alreadyExists = false;
+                    char productChar =
+                        static_cast<char>(
+                            tolower(
+                                static_cast<unsigned char>(
+                                    product.product_name[i])));
 
-                    for (const auto &suggestion : suggestions)
-                    {
-                        if (
-                            suggestion["product_name"] ==
-                            product.product_name)
-                        {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
+                    char prefixChar =
+                        static_cast<char>(
+                            tolower(
+                                static_cast<unsigned char>(
+                                    prefix[i])));
 
-                    if (!alreadyExists)
+                    if (productChar != prefixChar)
                     {
-                        suggestions.push_back({{"id", product.id},
-                                               {"product_name", product.product_name}});
+                        matches = false;
+                        break;
                     }
                 }
+
+                if (!matches)
+                    continue;
+
+                // Avoid duplicate product names.
+                bool alreadyExists = false;
+
+                for (const auto &suggestion : suggestions)
+                {
+                    if (suggestion == product.product_name)
+                    {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyExists)
+                    suggestions.push_back(product.product_name);
             }
 
             res.set_content(
@@ -217,94 +376,60 @@ void setupAutocompleteEndpoint(Server &server)
 }
 
 // ============================================================
-// GET /search/name/{name}
+// GET /search/result
+// ============================================================
 //
-// Exact product-name search.
+// Frontend polls this endpoint periodically.
 //
-// Later:
-//     name -> Core -> name lookup
+// The server checks:
 //
-// Currently:
-//     mock exact search
+//     currentSearchQuery
+//             vs
+//     lastProcessedQuery
+//
+// If they are different, a new search is performed.
+//
+// If they are the same, the existing result is returned.
+//
+// This prevents the search algorithm from running repeatedly
+// when nothing has changed.
 // ============================================================
 
-void setupNameSearchEndpoint(Server &server)
+void setupSearchResultEndpoint(Server &server)
 {
     server.Get(
-        R"(/search/name/(.+))",
-        [](const Request &req, Response &res)
+        "/search/result",
+        [](const Request &, Response &res)
         {
-            string name = req.matches[1];
+            lock_guard<mutex> lock(searchMutex);
 
-            json response = json::array();
+            // ------------------------------------------------
+            // Has the user entered something new?
+            // ------------------------------------------------
 
-            for (const auto &product : products)
+            if (currentSearchQuery != lastProcessedQuery)
             {
-                if (product.product_name == name)
-                {
-                    response.push_back(
-                        productToJson(product));
-                }
+                cout
+                    << "New search query: "
+                    << currentSearchQuery
+                    << "\n";
+
+                // Run the actual search.
+                currentSearchResult =
+                    performSearch(currentSearchQuery);
+
+                // Mark this query as processed.
+                lastProcessedQuery =
+                    currentSearchQuery;
             }
 
-            if (response.empty())
-            {
-                json error = {
-                    {"success", false},
-                    {"message", "Product not found"}};
-
-                res.status = 404;
-
-                res.set_content(
-                    error.dump(),
-                    "application/json");
-
-                return;
-            }
-
-            res.set_content(
-                response.dump(),
-                "application/json");
-        });
-}
-
-// ============================================================
-// GET /search/id/{id}
-//
-// Exact ID search.
-//
-// Later:
-//     id -> HashTable -> Product
-//
-// Currently:
-//     mock exact search
-// ============================================================
-
-void setupIdSearchEndpoint(Server &server)
-{
-    server.Get(
-        R"(/search/id/(.+))",
-        [](const Request &req, Response &res)
-        {
-            string id = req.matches[1];
-
-            for (const auto &product : products)
-            {
-                if (product.id == id)
-                {
-                    res.set_content(
-                        productToJson(product).dump(),
-                        "application/json");
-
-                    return;
-                }
-            }
+            // ------------------------------------------------
+            // Return the current result.
+            // --------------------------------------- ---------
 
             json response = {
-                {"success", false},
-                {"message", "Product not found"}};
-
-            res.status = 404;
+                {"query", currentSearchQuery},
+                {"results", currentSearchResult}};
 
             res.set_content(
                 response.dump(),
@@ -320,17 +445,33 @@ int main()
 {
     Server server;
 
-    // Initialize mock data
+    // --------------------------------------------------------
+    // Initialization
+    // --------------------------------------------------------
+
     setupMockOperations();
 
-    // Configure server
+    // --------------------------------------------------------
+    // Middleware
+    // --------------------------------------------------------
+
     setupCORS(server);
 
-    // Register endpoints
+    // --------------------------------------------------------
+    // Endpoints
+    // --------------------------------------------------------
+
     setupRecentProductEndpoint(server);
+
+    setupSearchInputEndpoint(server);
+
     setupAutocompleteEndpoint(server);
-    setupNameSearchEndpoint(server);
-    setupIdSearchEndpoint(server);
+
+    setupSearchResultEndpoint(server);
+
+    // --------------------------------------------------------
+    // Server information
+    // --------------------------------------------------------
 
     cout
         << "========================================\n"
@@ -340,10 +481,14 @@ int main()
         << "\n"
         << "Endpoints:\n"
         << "GET  /product/recent\n"
+        << "POST /search/input\n"
         << "GET  /search/autocomplete?prefix=<prefix>\n"
-        << "GET  /search/name/<name>\n"
-        << "GET  /search/id/<id>\n"
+        << "GET  /search/result\n"
         << "========================================\n";
+
+    // --------------------------------------------------------
+    // Start server
+    // --------------------------------------------------------
 
     if (!server.listen("localhost", 8080))
     {
