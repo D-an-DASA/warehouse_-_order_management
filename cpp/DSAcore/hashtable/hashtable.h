@@ -2,8 +2,8 @@
 // hastable.h - Hash Table tra cứu sản phẩm theo ID (O(1))
 // Nguoi thuc hien: Tran Thanh Duy - MC1
 // ==========================================================
-#ifndef HASTABLE_H
-#define HASTABLE_H
+#ifndef HASHTABLE_H
+#define HASHTABLE_H
 
 #include <vector>
 #include <list>
