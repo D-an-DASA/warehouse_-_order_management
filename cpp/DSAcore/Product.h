@@ -11,6 +11,7 @@ struct Product {
     string arrived_time;
     string best_by_date;
     string status;
+    int quantity = 1;
 };
 
 #endif

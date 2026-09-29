@@ -105,6 +105,8 @@ void testEdgeCases() {
 
     ht.insert({"P001", "Power Bank v2", "", "", "", "EXPIRED"});
     Product* r = ht.search("P001");
+    assert(r != nullptr && r->quantity == 2);
+    assert(ht.getSize() == 1);
     cout << "  Insert trung ID: " << r->product_name << endl;
 
     HashTable ht2;
