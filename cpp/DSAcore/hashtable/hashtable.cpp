@@ -25,12 +25,13 @@ HashTable::~HashTable() {
 // Công thức: hash = hash * 31 + ASCII(char) (giống Java)
 // ==========================================================
 int HashTable::hashFunc(const string& id, int cap) {
-    int sum = 0;
-    for (int i = 0; i < id.length(); i++) {
-        sum = sum * 31 + id[i];
+    long long hashValue = 0;
+
+    for (char c : id) {
+        hashValue = (hashValue * 31 + c) % cap;
     }
-    if (sum < 0) sum = -sum;   // Tránh số âm (tràn số)
-    return sum % cap;
+
+    return hashValue;
 }
 
 // ==========================================================

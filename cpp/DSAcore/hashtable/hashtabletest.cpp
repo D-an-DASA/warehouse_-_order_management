@@ -124,7 +124,44 @@ void testEdgeCases() {
 
     cout << "  => Test 3 PASSED!" << endl;
 }
+// ============================================================
+// TEST 4: RESIZE + ID DAI
+// ============================================================
+void testResizeAndLongIds() {
+    cout << "\n=== Test 4: Resize + Long IDs ===" << endl;
 
+    HashTable ht;
+    const int initialCapacity = ht.getCapacity();
+    vector<string> insertedIds;
+
+    for (int i = 1; i <= 200; i++) {
+        Product product;
+
+        product.id =
+            "PRODUCT-WAREHOUSE-2026-LONG-ID-" + to_string(i);
+        product.product_name = "Resize Test Product";
+        product.status = "AVAILABLE";
+
+        insertedIds.push_back(product.id);
+        ht.insert(product);
+    }
+
+    assert(ht.getSize() == 200);
+    assert(ht.getCapacity() > initialCapacity);
+
+    for (const string& id : insertedIds) {
+        Product* result = ht.search(id);
+
+        assert(result != nullptr);
+        assert(result->id == id);
+        assert(result->product_name == "Resize Test Product");
+    }
+
+    cout << "  Insert va tim lai 200 ID dai -> OK" << endl;
+    cout << "  Capacity: " << initialCapacity
+         << " -> " << ht.getCapacity() << endl;
+    cout << "  => Test 4 PASSED!" << endl;
+}
 // ============================================================
 // BENCHMARK (KHÔNG DÙNG LINEAR SCAN)
 // ============================================================
@@ -215,6 +252,7 @@ int main() {
     testInsertSearch();
     testRemove();
     testEdgeCases();
+    testResizeAndLongIds();
 
     benchmark("../../product_inventory_100 000.csv", 100000);
 

@@ -209,6 +209,143 @@ int main()
     }
 
 
+    // --------------------------------------------------
+    // TEST 8: Cap nhat snapshot Product cu
+    // --------------------------------------------------
+    {
+        LRU_Cache cache;
+
+        Product p1;
+        p1.id = "P001";
+        p1.product_name = "Old Product Name";
+        p1.status = "AVAILABLE";
+        p1.quantity = 1;
+
+        Product p2;
+        p2.id = "P002";
+
+        cache.Put(p1, "CREATE");
+        cache.Put(p2, "CREATE");
+
+        // P001 dang o cuoi danh sach.
+        p1.product_name = "Updated Product Name";
+        p1.status = "RESERVED";
+        p1.quantity = 7;
+
+        cache.Put(p1, "UPDATE");
+
+        vector<CacheItem> items = cache.GetAll();
+
+        assert(items.size() == 2);
+        assert(items[0].product.id == "P001");
+        assert(items[0].product.product_name == "Updated Product Name");
+        assert(items[0].product.status == "RESERVED");
+        assert(items[0].product.quantity == 7);
+        assert(items[0].operation == "UPDATE");
+
+        // P001 hien dang la head. Lan Put nay kiem tra Product
+        // van duoc cap nhat truoc nhanh return som trong Move_Front.
+        p1.quantity = 9;
+        cache.Put(p1, "READ");
+
+        items = cache.GetAll();
+
+        assert(items[0].product.quantity == 9);
+        assert(items[0].operation == "READ");
+
+        cout << "[PASS] Refresh cached Product snapshot\n";
+    }
+
+
+    // --------------------------------------------------
+    // TEST 9: Remove head, middle, tail, single, missing
+    // --------------------------------------------------
+    {
+        LRU_Cache cache;
+
+        Product p1;
+        Product p2;
+        Product p3;
+        Product p4;
+
+        p1.id = "P001";
+        p2.id = "P002";
+        p3.id = "P003";
+        p4.id = "P004";
+
+        cache.Put(p1, "CREATE");
+        cache.Put(p2, "CREATE");
+        cache.Put(p3, "CREATE");
+        cache.Put(p4, "CREATE");
+
+        // Thu tu: P004 -> P003 -> P002 -> P001
+
+        assert(cache.Remove("P004"));
+        assert(!cache.IsContain(p4));
+
+        vector<CacheItem> items = cache.GetAll();
+        assert(items.size() == 3);
+        assert(items[0].product.id == "P003");
+        assert(items[2].product.id == "P001");
+
+        assert(cache.Remove("P002"));
+        assert(!cache.IsContain(p2));
+
+        items = cache.GetAll();
+        assert(items.size() == 2);
+        assert(items[0].product.id == "P003");
+        assert(items[1].product.id == "P001");
+
+        assert(cache.Remove("P001"));
+        assert(!cache.IsContain(p1));
+
+        items = cache.GetAll();
+        assert(items.size() == 1);
+        assert(items[0].product.id == "P003");
+
+        assert(!cache.Remove("P999"));
+
+        assert(cache.Remove("P003"));
+        assert(cache.Size() == 0);
+        assert(cache.GetAll().empty());
+
+        // Cache phai van dung duoc sau khi bi xoa rong.
+        cache.Put(p2, "READ");
+        assert(cache.Size() == 1);
+        assert(cache.IsContain(p2));
+
+        cout << "[PASS] Remove head, middle, tail and single item\n";
+    }
+
+
+    // --------------------------------------------------
+    // TEST 10: Remove tao cho trong cache
+    // --------------------------------------------------
+    {
+        LRU_Cache cache;
+        Product products[11];
+
+        for (int i = 0; i < 10; i++) {
+            products[i].id = "P" + to_string(i + 1);
+            cache.Put(products[i], "CREATE");
+        }
+
+        assert(cache.Size() == 10);
+        assert(cache.Remove("P5"));
+        assert(cache.Size() == 9);
+
+        products[10].id = "P11";
+        cache.Put(products[10], "CREATE");
+
+        assert(cache.Size() == 10);
+        assert(cache.IsContain(products[0]));
+        assert(!cache.IsContain(products[4]));
+        assert(cache.IsContain(products[10]));
+
+        cout << "[PASS] Remove frees one cache slot\n";
+    }
+
+
     cout << "\n===== All tests passed! =====\n";
 
     return 0;
