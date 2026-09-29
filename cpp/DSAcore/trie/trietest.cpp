@@ -208,9 +208,9 @@ int main() {
     testRemove();
     testEdgeCases();
 
-    // Đường dẫn từ DSAcore/trie/ đến cpp/data/
-//benchmark("../../product_inventory_10 000.csv", 10000);
-benchmark("../../product_inventory_100 000.csv", 100000);
+    // Đường dẫn từ DSAcore/trie/ đến data
+//benchmark("../cpp/product_inventory_10 000.csv", 10000);
+benchmark("../cpp/product_inventory_100 000.csv", 100000);
 
     cout << "\n========================================" << endl;
     cout << "TAT CA TEST TRIE DA PASS!" << endl;
