@@ -209,7 +209,7 @@ int main() {
     testRemove();
     testEdgeCases();
 
-    benchmark("../../product_inventory_100 000.csv", 100000);
+    benchmark("../../cpp/product_inventory_100 000.csv", 100000);
 
     cout << "\n========================================" << endl;
     cout << "TAT CA TEST HASHTABLE DA PASS!" << endl;
