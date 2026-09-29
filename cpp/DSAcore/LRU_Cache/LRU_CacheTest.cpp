@@ -20,7 +20,6 @@ int main()
         cout << "[PASS] Initial cache is empty\n";
     }
 
-
     // --------------------------------------------------
     // TEST 2: Put product
     // --------------------------------------------------
@@ -33,11 +32,10 @@ int main()
         cache.Put(p1, "CREATE");
 
         assert(cache.Size() == 1);
-        assert(cache.IsContain(p1));
+        assert(cache.IsContain(p1.id));
 
         cout << "[PASS] Put and IsContain\n";
     }
-
 
     // --------------------------------------------------
     // TEST 3: Thứ tự khi thêm nhiều product
@@ -68,7 +66,6 @@ int main()
 
         cout << "[PASS] Insert order (MRU -> LRU)\n";
     }
-
 
     // --------------------------------------------------
     // TEST 4: Truy cập lại product -> Move_Front
@@ -106,7 +103,6 @@ int main()
         cout << "[PASS] Move accessed item to front\n";
     }
 
-
     // --------------------------------------------------
     // TEST 5: Eviction khi vượt MAX_SIZE
     // --------------------------------------------------
@@ -125,17 +121,16 @@ int main()
         assert(cache.Size() == 10);
 
         // P1 là product cũ nhất -> phải bị remove
-        assert(!cache.IsContain(products[0]));
+        assert(!cache.IsContain(products[0].id));
 
         // P2 vẫn còn
-        assert(cache.IsContain(products[1]));
+        assert(cache.IsContain(products[1].id));
 
         // P11 là product mới nhất
-        assert(cache.IsContain(products[10]));
+        assert(cache.IsContain(products[10].id));
 
         cout << "[PASS] Cache eviction at MAX_SIZE\n";
     }
-
 
     // --------------------------------------------------
     // TEST 6: Kiểm tra thứ tự sau eviction
@@ -165,7 +160,6 @@ int main()
 
         cout << "[PASS] Correct order after eviction\n";
     }
-
 
     // --------------------------------------------------
     // TEST 7: Truy cập phần tử ở giữa
@@ -207,7 +201,6 @@ int main()
 
         cout << "[PASS] Move middle item to front\n";
     }
-
 
     // --------------------------------------------------
     // TEST 8: Cap nhat snapshot Product cu
@@ -256,7 +249,6 @@ int main()
         cout << "[PASS] Refresh cached Product snapshot\n";
     }
 
-
     // --------------------------------------------------
     // TEST 9: Remove head, middle, tail, single, missing
     // --------------------------------------------------
@@ -281,7 +273,7 @@ int main()
         // Thu tu: P004 -> P003 -> P002 -> P001
 
         assert(cache.Remove("P004"));
-        assert(!cache.IsContain(p4));
+        assert(!cache.IsContain(p4.id));
 
         vector<CacheItem> items = cache.GetAll();
         assert(items.size() == 3);
@@ -289,7 +281,7 @@ int main()
         assert(items[2].product.id == "P001");
 
         assert(cache.Remove("P002"));
-        assert(!cache.IsContain(p2));
+        assert(!cache.IsContain(p2.id));
 
         items = cache.GetAll();
         assert(items.size() == 2);
@@ -297,7 +289,7 @@ int main()
         assert(items[1].product.id == "P001");
 
         assert(cache.Remove("P001"));
-        assert(!cache.IsContain(p1));
+        assert(!cache.IsContain(p1.id));
 
         items = cache.GetAll();
         assert(items.size() == 1);
@@ -312,11 +304,10 @@ int main()
         // Cache phai van dung duoc sau khi bi xoa rong.
         cache.Put(p2, "READ");
         assert(cache.Size() == 1);
-        assert(cache.IsContain(p2));
+        assert(cache.IsContain(p2.id));
 
         cout << "[PASS] Remove head, middle, tail and single item\n";
     }
-
 
     // --------------------------------------------------
     // TEST 10: Remove tao cho trong cache
@@ -325,7 +316,8 @@ int main()
         LRU_Cache cache;
         Product products[11];
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++)
+        {
             products[i].id = "P" + to_string(i + 1);
             cache.Put(products[i], "CREATE");
         }
@@ -338,13 +330,12 @@ int main()
         cache.Put(products[10], "CREATE");
 
         assert(cache.Size() == 10);
-        assert(cache.IsContain(products[0]));
-        assert(!cache.IsContain(products[4]));
-        assert(cache.IsContain(products[10]));
+        assert(cache.IsContain(products[0].id));
+        assert(!cache.IsContain(products[4].id));
+        assert(cache.IsContain(products[10].id));
 
         cout << "[PASS] Remove frees one cache slot\n";
     }
-
 
     cout << "\n===== All tests passed! =====\n";
 
