@@ -76,8 +76,7 @@ Frontend hiện tại gồm:
 - Retrieval Results.
 - Recent Workspace.
 
-<img width="1360" height="717" alt="image" src="https://github.com/user-attachments/assets/a1a47a65-0ed9-4399-baec-432c865065d4" />
-
+<img width="1365" height="651" alt="image" src="https://github.com/user-attachments/assets/b6cab7cd-2b0d-41f7-a6a4-034f2883ff00" />
 
 ### Retrieval Results
 
