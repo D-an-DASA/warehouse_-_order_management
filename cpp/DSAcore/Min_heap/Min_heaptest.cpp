@@ -6,7 +6,7 @@ using namespace std;
 
 int main() {
     InventoryManager inventory;
-    string filename = "product_inventory_10 000.csv";
+    string filename = "../cpp/product_inventory_100 000.csv";
     // LOAD DATASET
     if (!inventory.loadCSV(filename)) {
         return 1;
