@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <sstream>
 #include <mutex>
 #include <algorithm>
 #include <cctype>
@@ -8,6 +10,7 @@
 #include "src/httplib.h"
 #include "src/json.hpp"
 #include "DSAcore/LRU_Cache/LRU_Cache.h"
+#include "DSAcore/hashtable/hashtable.h"
 
 using namespace std;
 using namespace httplib;
@@ -26,6 +29,37 @@ string lastProcessedQuery;
 
 // Current search result.
 json currentSearchResult = json::array();
+
+// Products are loaded once at startup and looked up by exact ID.
+HashTable productTable;
+
+bool loadProductTable(const string &filename)
+{
+    ifstream file(filename);
+    if (!file.is_open())
+    {
+        cerr << "Cannot open product inventory: " << filename << '\n';
+        return false;
+    }
+
+    string line;
+    getline(file, line); // CSV header
+    while (getline(file, line))
+    {
+        if (line.empty()) continue;
+
+        stringstream row(line);
+        Product product;
+        getline(row, product.id, ',');
+        getline(row, product.product_name, ',');
+        getline(row, product.made_date, ',');
+        getline(row, product.arrived_time, ',');
+        getline(row, product.best_by_date, ',');
+        getline(row, product.status, ',');
+        productTable.insert(product);
+    }
+    return true;
+}
 
 // Protect shared search state because HTTP handlers
 // may be executed concurrently.
@@ -217,15 +251,20 @@ void setupSearchResultEndpoint(Server &server)
                     << currentSearchQuery
                     << "\n";
 
-                // TODO:
-                // Connect to the actual search core.
-                //
-                // Example:
-                //
-                // currentSearchResult =
-                //     searchCore.search(currentSearchQuery);
-
                 currentSearchResult = json::array();
+                Product *product = productTable.search(currentSearchQuery);
+                if (product != nullptr)
+                {
+                    currentSearchResult.push_back({
+                        {"id", product->id},
+                        {"product_name", product->product_name},
+                        {"made_date", product->made_date},
+                        {"arrived_time", product->arrived_time},
+                        {"best_by_date", product->best_by_date},
+                        {"status", product->status},
+                        {"quantity", product->quantity}
+                    });
+                }
 
                 lastProcessedQuery =
                     currentSearchQuery;
@@ -251,6 +290,11 @@ void setupSearchResultEndpoint(Server &server)
 
 int main()
 {
+    if (!loadProductTable("cpp/product_inventory_100 000.csv"))
+    {
+        return 1;
+    }
+
     Server server;
 
     // --------------------------------------------------------

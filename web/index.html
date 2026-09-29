@@ -87,12 +87,13 @@
                   <th>Arrived Time</th>
                   <th>Best By Date</th>
                   <th>Status</th>
+                  <th>Quantity</th>
                 </tr>
               </thead>
 
               <tbody id="retrievalResults">
                 <tr>
-                  <td colspan="7" class="empty-state">No retrieval results.</td>
+                  <td colspan="8" class="empty-state">No retrieval results.</td>
                 </tr>
               </tbody>
             </table>
@@ -306,7 +307,7 @@
           if (products.length === 0) {
             table.innerHTML = `
         <tr>
-          <td colspan="7" class="empty-state">
+          <td colspan="8" class="empty-state">
             No products found.
           </td>
         </tr>
@@ -325,6 +326,7 @@
             <td>${product.arrived_time}</td>
             <td>${product.best_by_date}</td>
             <td>${product.status}</td>
+            <td>${product.quantity}</td>
           </tr>
         `,
             )
@@ -336,7 +338,7 @@
 
           table.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-state">
+        <td colspan="8" class="empty-state">
           Failed to load search results.
         </td>
       </tr>

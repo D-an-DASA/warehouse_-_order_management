@@ -54,7 +54,14 @@ void testInsertSearch() {
     ht.insert({"P003", "Laptop Stand", "2025-05-15", "2025-05-26 08:09:13", "2027-05-04", "AVAILABLE"});
 
     Product* r = ht.search("P001");
-    assert(r != nullptr && r->product_name == "Power Bank");
+    assert(r != nullptr);
+    assert(r->id == "P001");
+    assert(r->product_name == "Power Bank");
+    assert(r->made_date == "2023-02-21");
+    assert(r->arrived_time == "2023-03-17 08:15:14");
+    assert(r->best_by_date == "2024-01-02");
+    assert(r->status == "EXPIRED");
+    assert(r->quantity == 1);
     cout << "  Tim P001: " << r->product_name << " -> OK" << endl;
 
     r = ht.search("P003");
