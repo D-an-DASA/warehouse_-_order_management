@@ -4,8 +4,6 @@
 #include <fstream>
 #include <sstream>
 #include <mutex>
-#include <algorithm>
-#include <cctype>
 
 #include "src/httplib.h"
 #include "src/json.hpp"
@@ -80,7 +78,7 @@ void setupCORS(Server &server)
 
             res.set_header(
                 "Access-Control-Allow-Methods",
-                "GET, POST, OPTIONS");
+                "GET, POST, DELETE, OPTIONS");
 
             res.set_header(
                 "Access-Control-Allow-Headers",
@@ -93,6 +91,54 @@ void setupCORS(Server &server)
             }
 
             return Server::HandlerResponse::Unhandled;
+        });
+}
+
+// ============================================================
+// POST /product/add
+// Request JSON: product_name, made_date, arrived_time, best_by_date, quantity.
+// Response: 501 until product creation logic is connected.
+// ============================================================
+
+void setupAddProductEndpoint(Server &server)
+{
+    server.Post(
+        "/product/add",
+        [](const Request &req, Response &res)
+        {
+            cout << "[API] POST /product/add called\n"
+                 << "[API] Request body: " << req.body << '\n';
+
+            res.status = 501;
+            res.set_content(
+                json{{"success", false}, {"message", "Add product is not implemented."}}.dump(),
+                "application/json");
+
+            cout << "[API] POST /product/add response: 501 Not Implemented\n";
+        });
+}
+
+// ============================================================
+// DELETE /product/delete
+// Request JSON: { "id": "<product-id>" }
+// Response: 501 until product deletion logic is connected.
+// ============================================================
+
+void setupDeleteProductEndpoint(Server &server)
+{
+    server.Delete(
+        "/product/delete",
+        [](const Request &req, Response &res)
+        {
+            cout << "[API] DELETE /product/delete called\n"
+                 << "[API] Request body: " << req.body << '\n';
+
+            res.status = 501;
+            res.set_content(
+                json{{"success", false}, {"message", "Delete product is not implemented."}}.dump(),
+                "application/json");
+
+            cout << "[API] DELETE /product/delete response: 501 Not Implemented\n";
         });
 }
 
@@ -308,6 +354,8 @@ int main()
     // --------------------------------------------------------
 
     setupRecentProductEndpoint(server);
+    setupAddProductEndpoint(server);
+    setupDeleteProductEndpoint(server);
     setupSearchInputEndpoint(server);
     setupAutocompleteEndpoint(server);
     setupSearchResultEndpoint(server);
@@ -324,6 +372,8 @@ int main()
         << "\n"
         << "Endpoints:\n"
         << "GET  /product/recent\n"
+        << "POST /product/add\n"
+        << "DELETE /product/delete\n"
         << "POST /search/input\n"
         << "GET  /search/autocomplete?prefix=<prefix>\n"
         << "GET  /search/result\n"
