@@ -78,6 +78,7 @@ private:
     void Move_Front(const Product& prod, const string& operation) {
         Node* cur = table[prod.id];
 
+        cur->item.product = prod;
         cur->item.time = Cur_Time();
         cur->item.operation = operation;
 
@@ -128,6 +129,35 @@ public:
             Add_Front(prod, operation);
             if (Size() > MAX_SIZE) Pop_Back();
         }
+    }
+
+    bool Remove(const string& id) {
+        auto found = table.find(id);
+
+        if (found == table.end()) {
+            return false;
+        }
+
+        Node* cur = found->second;
+
+        if (cur->prev != nullptr) {
+            cur->prev->next = cur->next;
+        }
+        else {
+            head = cur->next;
+        }
+
+        if (cur->next != nullptr) {
+            cur->next->prev = cur->prev;
+        }
+        else {
+            tail = cur->prev;
+        }
+
+        table.erase(found);
+        delete cur;
+
+        return true;
     }
 
 
