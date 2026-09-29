@@ -12,6 +12,7 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100%;
+  overflow-x: hidden;
   font-family: Arial, sans-serif;
   background: #8695b8;
   color: #d6d9e0;
@@ -96,12 +97,14 @@ MAIN CONTENT
 
 .main-content {
   width: 100%;
+  min-width: 0;
   max-width: 1400px;
   margin: 0 auto;
   padding: 32px 40px;
   box-sizing: border-box;
   background: #182235;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .main-content h1 {
@@ -249,6 +252,157 @@ SEARCH RECOMMENDATION ROW
 }
 
 /* =========================
+ADD PRODUCT
+========================= */
+
+.add-product-section {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 32px;
+  padding: 24px 24px 10px;
+  background: #111827;
+  border: 1px solid #263244;
+  border-radius: 12px;
+}
+
+.add-product-section .section-header {
+  margin-bottom: 20px;
+}
+
+.add-product-section h2 {
+  margin: 0;
+  color: #e5e9f0;
+  font-size: 20px;
+}
+
+.add-product-section .section-header p {
+  margin: 4px 0 0;
+  color: #7f8ba1;
+  font-size: 14px;
+}
+
+.add-product-table-container {
+  width: 100%;
+  min-width: 0;
+  padding-bottom: 16px;
+  overflow-x: auto;
+}
+
+.add-product-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.add-product-table th {
+  padding: 0 10px 10px;
+  color: #aeb6c4;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.add-product-table th:first-child {
+  width: 24%;
+}
+
+.add-product-table th:nth-child(2),
+.add-product-table th:nth-child(4) {
+  width: 14%;
+}
+
+.add-product-table th:nth-child(3) {
+  width: 16%;
+}
+
+.add-product-table th:nth-child(5) {
+  width: 10%;
+}
+
+.add-product-table th:last-child {
+  width: 22%;
+}
+
+.add-product-table td {
+  padding: 0 10px;
+}
+
+.add-product-table td:first-child {
+  padding-left: 0;
+}
+
+.add-product-table td:last-child {
+  padding-right: 0;
+}
+
+.add-product-table input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #34445c;
+  border-radius: 6px;
+  outline: none;
+  background: #182235;
+  color: #e5e9f0;
+  color-scheme: dark;
+  font: inherit;
+  font-size: 14px;
+}
+
+.add-product-table input::placeholder {
+  color: #7f8ba1;
+}
+
+.add-product-table input:focus {
+  border-color: #72b8a4;
+  box-shadow: 0 0 0 2px rgba(114, 184, 164, 0.18);
+}
+
+.add-product-table button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  background: #287a68;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.add-product-table button:hover {
+  background: #32927c;
+}
+
+.add-product-table button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.form-message {
+  min-height: 18px;
+  margin: 4px 0 0;
+  color: #aeb6c4;
+  font-size: 14px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================
 RECENT OPERATIONS
 ========================= */
 
@@ -347,6 +501,43 @@ RECENT OPERATIONS TABLE
 
 .recent-operations-table td:nth-child(4) {
   font-weight: 500;
+}
+
+.remove-product-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #8f454b;
+  border-radius: 6px;
+  background: #321f27;
+  color: #f0a3a5;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.remove-product-button:hover:not(:disabled) {
+  border-color: #b9555c;
+  background: #54272f;
+  color: #ffffff;
+}
+
+.remove-product-button:focus-visible {
+  outline: 2px solid #f0a3a5;
+  outline-offset: 2px;
+}
+
+.remove-product-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .recent-operations-table tbody tr:last-child td {
