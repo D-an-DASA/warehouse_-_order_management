@@ -8,34 +8,37 @@
 #include "../Product.h"
 using namespace std;
 
-struct CacheItem {
+struct CacheItem
+{
     string time;
     string operation;
     Product product;
 };
 
-
-class LRU_Cache {
+class LRU_Cache
+{
 
 private:
-    struct Node {
+    struct Node
+    {
         CacheItem item;
-        Node* next = nullptr;
-        Node* prev = nullptr;
+        Node *next = nullptr;
+        Node *prev = nullptr;
     };
 
-    Node* head = nullptr;
-    Node* tail = nullptr;
+    Node *head = nullptr;
+    Node *tail = nullptr;
 
-    unordered_map<string, Node*> table;
+    unordered_map<string, Node *> table;
 
     static const size_t MAX_SIZE = 10;
 
-    string Cur_Time(){
+    string Cur_Time()
+    {
         char Buffer[100];
 
         time_t now = time(nullptr);
-        tm* infoTime = localtime(&now);
+        tm *infoTime = localtime(&now);
 
         strftime(Buffer, sizeof(Buffer), "%H:%M:%S", infoTime);
 
@@ -43,8 +46,9 @@ private:
         return result;
     }
 
-    void Add_Front(const Product& prod, const string& operation){
-        Node* new_node = new Node;
+    void Add_Front(const Product &prod, const string &operation)
+    {
+        Node *new_node = new Node;
 
         new_node->item.product = prod;
         new_node->item.time = Cur_Time();
@@ -60,34 +64,38 @@ private:
             return;
         }
 
-
         // TH2: List không rỗng
         new_node->next = head;
         head->prev = new_node;
         head = new_node;
     }
 
-    void Pop_Back(){
-        Node* old_tail = tail;
+    void Pop_Back()
+    {
+        Node *old_tail = tail;
         table.erase(old_tail->item.product.id);
         tail = tail->prev;
         tail->next = nullptr;
         delete old_tail;
     }
 
-    void Move_Front(const Product& prod, const string& operation) {
-        Node* cur = table[prod.id];
+    void Move_Front(const Product &prod, const string &operation)
+    {
+        Node *cur = table[prod.id];
 
         cur->item.product = prod;
         cur->item.time = Cur_Time();
         cur->item.operation = operation;
 
-        if (cur == head) return;
-        if (cur == tail){
+        if (cur == head)
+            return;
+        if (cur == tail)
+        {
             tail = cur->prev;
             tail->next = nullptr;
         }
-        else{
+        else
+        {
             cur->next->prev = cur->prev;
             cur->prev->next = cur->next;
         }
@@ -98,18 +106,16 @@ private:
         head = cur;
     }
 
-
 public:
-
     LRU_Cache() {}
 
     ~LRU_Cache()
     {
-        Node* cur = head;
+        Node *cur = head;
 
         while (cur != nullptr)
         {
-            Node* next = cur->next;
+            Node *next = cur->next;
 
             delete cur;
 
@@ -117,58 +123,65 @@ public:
         }
     }
 
-
-
-    bool IsContain(const Product& prod) const{
-        return table.find(prod.id) != table.end();
+    bool IsContain(const string &id) const
+    {
+        return table.find(id) != table.end();
     }
 
-    void Put(const Product& prod, const string& operation){
-        if (IsContain(prod)) Move_Front(prod, operation);
-        else {
+    void Put(const Product &prod, const string &operation)
+    {
+        if (IsContain(prod.id))
+            Move_Front(prod, operation);
+        else
+        {
             Add_Front(prod, operation);
-            if (Size() > MAX_SIZE) Pop_Back();
+            if (Size() > MAX_SIZE)
+                Pop_Back();
         }
     }
 
-    bool Remove(const string& id) {
-        auto found = table.find(id);
-
-        if (found == table.end()) {
+    bool Remove(const string &id)
+    {
+        if (!IsContain(id))
+        {
             return false;
         }
 
-        Node* cur = found->second;
+        Node *cur = table[id];
 
-        if (cur->prev != nullptr) {
+        if (cur->prev != nullptr)
+        {
             cur->prev->next = cur->next;
         }
-        else {
+        else
+        {
             head = cur->next;
         }
 
-        if (cur->next != nullptr) {
+        if (cur->next != nullptr)
+        {
             cur->next->prev = cur->prev;
         }
-        else {
+        else
+        {
             tail = cur->prev;
         }
 
-        table.erase(found);
+        table.erase(id);
         delete cur;
 
         return true;
     }
 
-
-    size_t Size() const {
+    size_t Size() const
+    {
         return table.size();
     }
 
-
-    vector<CacheItem> GetAll() const {
+    vector<CacheItem> GetAll() const
+    {
         vector<CacheItem> result;
-        Node* cur = head;
+        Node *cur = head;
 
         while (cur != nullptr)
         {
