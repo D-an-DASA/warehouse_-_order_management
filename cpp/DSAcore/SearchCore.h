@@ -10,15 +10,6 @@
 #include "trie/trie.h"
 #include "LRU_Cache/LRU_Cache.h"
 
-// Kết quả trả về sau khi tìm kiếm
-struct SearchResult {
-    // Danh sách sản phẩm thực sự được trả về
-    std::vector<Product> products;
-
-    // Tổng số sản phẩm tìm thấy trước khi giới hạn kết quả
-    std::size_t total = 0;
-};
-
 class SearchCore {
 private:
     // Nguồn lưu Product chính, tìm chính xác bằng ID
@@ -36,51 +27,9 @@ private:
     // Số chữ số trong ID, ví dụ P00001 có độ rộng 5
     int idWidth = 5;
 
-    // Nhóm hàm chuẩn hóa chuỗi
-    static std::string trim(const std::string& value);
-
-    static std::string collapseSpaces(
-        const std::string& value
-    );
-
-    static std::string normalizeName(
-        const std::string& value
-    );
-
-    static std::string normalizeId(
-        const std::string& value
-    );
-
-    // Nhóm hàm kiểm tra dữ liệu
-    static bool isProductId(
-        const std::string& value
-    );
-
-    static bool isValidDate(
-        const std::string& value
-    );
-
-    static bool normalizeArrivedTime(
-        std::string& arrivedTime,
-        std::string& error
-    );
-
-    // Kiểm tra và chuẩn hóa một Product
-    bool validateProduct(
-        Product& product,
-        std::string& error
-    ) const;
-
-    // Nhóm hàm hỗ trợ ID và CSV
-    static std::vector<std::string> splitCsv(
-        const std::string& line
-    );  // Tách một dòng CSV thành nhiều cột
-
     void updateIdCounter(
         const std::string& id
     );  // Cập nhật số thứ tự ID khi đọc dữ liệu CSV
-
-    std::string generateId();   // Sinh ID mới cho sản phẩm
 
 public:
     SearchCore() = default;
@@ -91,34 +40,23 @@ public:
     SearchCore& operator=(const SearchCore&) = delete;
 
     // Đọc dữ liệu ban đầu từ file CSV
-    bool loadCSV(
-        const std::string& filename,
-        std::string& error
-    );
+    bool loadCSV(const std::string& filename);
 
-    // Thêm sản phẩm và sinh ID trong SearchCore
-    bool addProduct(
-        Product input,
-        Product& created,
-        std::string& error
-    );
+    // Thêm sản phẩm và ghi ID được sinh ra vào product
+    bool addProduct(Product& product);
 
     // Xóa sản phẩm theo ID
-    bool deleteProduct(
-        const std::string& rawId,
-        std::string& error
-    );
+    bool deleteProduct(const std::string& id);
 
-    // Tự phân biệt tìm theo ID hay tìm theo tên
-    SearchResult search(
-        const std::string& rawQuery,
-        std::size_t limit = 50,
-        bool recordRecent = true
+    // Tìm chính xác theo ID, nếu không có thì tìm tên theo tiền tố
+    std::vector<Product> search(
+        const std::string& query,
+        std::size_t limit = 50
     );
 
     // Gợi ý tên sản phẩm theo tiền tố
     std::vector<std::string> autocomplete(
-        const std::string& rawPrefix,
+        const std::string& prefix,
         std::size_t limit = 10
     );
 
