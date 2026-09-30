@@ -61,7 +61,6 @@ void testInsertSearch() {
     assert(r->arrived_time == "2023-03-17 08:15:14");
     assert(r->best_by_date == "2024-01-02");
     assert(r->status == "EXPIRED");
-    assert(r->quantity == 1);
     cout << "  Tim P001: " << r->product_name << " -> OK" << endl;
 
     r = ht.search("P003");
@@ -110,11 +109,12 @@ void testEdgeCases() {
     assert(ht.search("") == nullptr);
     cout << "  Tim ID rong -> OK" << endl;
 
-    ht.insert({"P001", "Power Bank v2", "", "", "", "EXPIRED"});
+    bool inserted = ht.insert({"P001", "Power Bank v2", "", "", "", "EXPIRED"});
     Product* r = ht.search("P001");
-    assert(r != nullptr && r->quantity == 2);
+    assert(inserted == false);
+    assert(r != nullptr && r->product_name == "Power Bank");
     assert(ht.getSize() == 1);
-    cout << "  Insert trung ID: " << r->product_name << endl;
+    cout << "  Tu choi insert trung ID -> OK" << endl;
 
     HashTable ht2;
     ht2.insert({"P100", "Old Milk", "", "", "2020-01-01", "EXPIRED"});

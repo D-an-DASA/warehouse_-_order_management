@@ -146,10 +146,12 @@ Autocomplete được thiết kế để sử dụng **Trie** trong phiên bản
 
 # 5. Backend API
 
-Backend hiện có 4 endpoint chính:
+Backend hiện có 6 endpoint chính:
 
 ```text
 GET  /product/recent
+POST /product/add
+DELETE /product/delete
 POST /search/input
 GET  /search/autocomplete
 GET  /search/result
@@ -176,6 +178,15 @@ Trả về search result hiện tại.
 ### `GET /product/recent`
 
 Trả về danh sách các sản phẩm được tương tác gần đây từ LRU Cache.
+
+### `POST /product/add`
+
+Nhận thông tin sản phẩm và `quantity`. Backend tạo đúng số sản phẩm được yêu
+cầu; mỗi sản phẩm nhận một ID riêng và không lưu `quantity` trong `Product`.
+
+### `DELETE /product/delete`
+
+Xóa đúng một sản phẩm theo ID.
 
 ---
 

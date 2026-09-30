@@ -56,15 +56,15 @@ void HashTable::resize() {
 // ==========================================================
 // Thêm 1 sản phẩm vào bảng
 // ==========================================================
-void HashTable::insert(const Product& p) {
+bool HashTable::insert(const Product& p) {
 
     int idx = hashFunc(p.id, capacity);
 
-    // ID đã tồn tại: cộng số lượng vào sản phẩm đang lưu.
-    for (auto& current : buckets[idx]) {
+    // Mỗi ID chỉ đại diện cho một sản phẩm.
+    // Từ chối ID trùng để không ghi đè sản phẩm đang lưu.
+    for (const auto& current : buckets[idx]) {
         if (current.id == p.id) {
-            current.quantity += p.quantity;
-            return;
+            return false;
         }
     }
     
@@ -77,6 +77,7 @@ void HashTable::insert(const Product& p) {
 
     buckets[idx].push_back(p);            // Thêm vào bucket
     size++;                               // Tăng số đếm
+    return true;
 }
 
 // ==========================================================

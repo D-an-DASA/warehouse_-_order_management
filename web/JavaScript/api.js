@@ -116,7 +116,8 @@ async function postText(endpoint, text) {
  *
  *   product_name, made_date, arrived_time, best_by_date, quantity
  *
- * The current server returns 501 until product creation is implemented.
+ * quantity is an operation parameter: the backend creates one unique ID
+ * for each requested product.
  */
 async function addProduct(product) {
   return await postData("/product/add", product);
@@ -124,7 +125,6 @@ async function addProduct(product) {
 
 /**
  * DELETE /product/delete with a JSON body containing the product ID.
- * The current server returns 501 until product deletion is implemented.
  */
 async function removeProduct(productId) {
   return await deleteData("/product/delete", { id: productId });

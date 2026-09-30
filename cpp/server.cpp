@@ -4,6 +4,9 @@
 #include <fstream>
 #include <sstream>
 #include <mutex>
+#include <algorithm>
+#include <cctype>
+#include <iomanip>
 
 #include "src/httplib.h"
 #include "src/json.hpp"
@@ -30,6 +33,48 @@ json currentSearchResult = json::array();
 
 // Products are loaded once at startup and looked up by exact ID.
 HashTable productTable;
+unsigned long long nextProductNumber = 1;
+size_t productIdWidth = 5;
+
+void updateProductIdCounter(const string &id)
+{
+    if (id.size() < 2 || id[0] != 'P' ||
+        !all_of(id.begin() + 1, id.end(), [](unsigned char character)
+                { return isdigit(character) != 0; }))
+    {
+        return;
+    }
+
+    try
+    {
+        unsigned long long number = stoull(id.substr(1));
+        productIdWidth = max(productIdWidth, id.size() - 1);
+        nextProductNumber = max(nextProductNumber, number + 1);
+    }
+    catch (...)
+    {
+        // Ignore IDs that are too large to use for the counter.
+    }
+}
+
+string generateProductId()
+{
+    ostringstream output;
+    output << 'P' << setw(static_cast<int>(productIdWidth))
+           << setfill('0') << nextProductNumber++;
+    return output.str();
+}
+
+json productToJson(const Product &product)
+{
+    return {
+        {"id", product.id},
+        {"product_name", product.product_name},
+        {"made_date", product.made_date},
+        {"arrived_time", product.arrived_time},
+        {"best_by_date", product.best_by_date},
+        {"status", product.status}};
+}
 
 bool loadProductTable(const string &filename)
 {
@@ -54,7 +99,12 @@ bool loadProductTable(const string &filename)
         getline(row, product.arrived_time, ',');
         getline(row, product.best_by_date, ',');
         getline(row, product.status, ',');
-        productTable.insert(product);
+        if (!productTable.insert(product))
+        {
+            cerr << "Duplicate product ID in inventory: " << product.id << '\n';
+            return false;
+        }
+        updateProductIdCounter(product.id);
     }
     return true;
 }
@@ -97,7 +147,7 @@ void setupCORS(Server &server)
 // ============================================================
 // POST /product/add
 // Request JSON: product_name, made_date, arrived_time, best_by_date, quantity.
-// Response: 501 until product creation logic is connected.
+// quantity controls how many products are created; it is not stored in Product.
 // ============================================================
 
 void setupAddProductEndpoint(Server &server)
@@ -109,19 +159,67 @@ void setupAddProductEndpoint(Server &server)
             cout << "[API] POST /product/add called\n"
                  << "[API] Request body: " << req.body << '\n';
 
-            res.status = 501;
+            json payload;
+            try
+            {
+                payload = json::parse(req.body);
+            }
+            catch (const json::parse_error &)
+            {
+                res.status = 400;
+                res.set_content(json{{"success", false}, {"message", "Invalid JSON body."}}.dump(), "application/json");
+                return;
+            }
+
+            if (!payload.is_object() ||
+                !payload.contains("product_name") || !payload["product_name"].is_string() ||
+                !payload.contains("made_date") || !payload["made_date"].is_string() ||
+                !payload.contains("arrived_time") || !payload["arrived_time"].is_string() ||
+                !payload.contains("best_by_date") || !payload["best_by_date"].is_string() ||
+                !payload.contains("quantity") || !payload["quantity"].is_number_integer() ||
+                payload["quantity"].get<int>() < 1)
+            {
+                res.status = 400;
+                res.set_content(json{{"success", false}, {"message", "Product fields are missing or invalid."}}.dump(), "application/json");
+                return;
+            }
+
+            const int quantity = payload["quantity"].get<int>();
+            json createdProducts = json::array();
+
+            lock_guard<mutex> lock(searchMutex);
+            for (int i = 0; i < quantity; i++)
+            {
+                Product product;
+                product.id = generateProductId();
+                product.product_name = payload["product_name"].get<string>();
+                product.made_date = payload["made_date"].get<string>();
+                product.arrived_time = payload["arrived_time"].get<string>();
+                product.best_by_date = payload["best_by_date"].get<string>();
+                product.status = "AVAILABLE";
+
+                if (!productTable.insert(product))
+                {
+                    res.status = 500;
+                    res.set_content(json{{"success", false}, {"message", "Could not generate a unique product ID."}}.dump(), "application/json");
+                    return;
+                }
+
+                createdProducts.push_back(productToJson(product));
+            }
+
+            res.status = 201;
             res.set_content(
-                json{{"success", false}, {"message", "Add product is not implemented."}}.dump(),
+                json{{"success", true}, {"products", createdProducts}}.dump(),
                 "application/json");
 
-            cout << "[API] POST /product/add response: 501 Not Implemented\n";
+            cout << "[API] Added " << quantity << " products\n";
         });
 }
 
 // ============================================================
 // DELETE /product/delete
 // Request JSON: { "id": "<product-id>" }
-// Response: 501 until product deletion logic is connected.
 // ============================================================
 
 void setupDeleteProductEndpoint(Server &server)
@@ -133,12 +231,46 @@ void setupDeleteProductEndpoint(Server &server)
             cout << "[API] DELETE /product/delete called\n"
                  << "[API] Request body: " << req.body << '\n';
 
-            res.status = 501;
+            json payload;
+            try
+            {
+                payload = json::parse(req.body);
+            }
+            catch (const json::parse_error &)
+            {
+                res.status = 400;
+                res.set_content(json{{"success", false}, {"message", "Invalid JSON body."}}.dump(), "application/json");
+                return;
+            }
+
+            if (!payload.is_object() || !payload.contains("id") || !payload["id"].is_string())
+            {
+                res.status = 400;
+                res.set_content(json{{"success", false}, {"message", "A product id is required."}}.dump(), "application/json");
+                return;
+            }
+
+            const string productId = payload["id"].get<string>();
+            lock_guard<mutex> lock(searchMutex);
+
+            if (!productTable.remove(productId))
+            {
+                res.status = 404;
+                res.set_content(json{{"success", false}, {"message", "Product not found."}}.dump(), "application/json");
+                return;
+            }
+
+            if (currentSearchQuery == productId)
+            {
+                lastProcessedQuery.clear();
+                currentSearchResult = json::array();
+            }
+
             res.set_content(
-                json{{"success", false}, {"message", "Delete product is not implemented."}}.dump(),
+                json{{"success", true}, {"id", productId}}.dump(),
                 "application/json");
 
-            cout << "[API] DELETE /product/delete response: 501 Not Implemented\n";
+            cout << "[API] Deleted product " << productId << '\n';
         });
 }
 
@@ -301,15 +433,7 @@ void setupSearchResultEndpoint(Server &server)
                 Product *product = productTable.search(currentSearchQuery);
                 if (product != nullptr)
                 {
-                    currentSearchResult.push_back({
-                        {"id", product->id},
-                        {"product_name", product->product_name},
-                        {"made_date", product->made_date},
-                        {"arrived_time", product->arrived_time},
-                        {"best_by_date", product->best_by_date},
-                        {"status", product->status},
-                        {"quantity", product->quantity}
-                    });
+                    currentSearchResult.push_back(productToJson(*product));
                 }
 
                 lastProcessedQuery =
