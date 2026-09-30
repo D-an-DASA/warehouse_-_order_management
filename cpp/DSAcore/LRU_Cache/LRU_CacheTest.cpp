@@ -212,7 +212,7 @@ int main()
         p1.id = "P001";
         p1.product_name = "Old Product Name";
         p1.status = "AVAILABLE";
-        p1.quantity = 1;
+        p1.best_by_date = "2027-01-01";
 
         Product p2;
         p2.id = "P002";
@@ -223,7 +223,7 @@ int main()
         // P001 dang o cuoi danh sach.
         p1.product_name = "Updated Product Name";
         p1.status = "RESERVED";
-        p1.quantity = 7;
+        p1.best_by_date = "2028-01-01";
 
         cache.Put(p1, "UPDATE");
 
@@ -233,17 +233,17 @@ int main()
         assert(items[0].product.id == "P001");
         assert(items[0].product.product_name == "Updated Product Name");
         assert(items[0].product.status == "RESERVED");
-        assert(items[0].product.quantity == 7);
+        assert(items[0].product.best_by_date == "2028-01-01");
         assert(items[0].operation == "UPDATE");
 
         // P001 hien dang la head. Lan Put nay kiem tra Product
         // van duoc cap nhat truoc nhanh return som trong Move_Front.
-        p1.quantity = 9;
+        p1.best_by_date = "2029-01-01";
         cache.Put(p1, "READ");
 
         items = cache.GetAll();
 
-        assert(items[0].product.quantity == 9);
+        assert(items[0].product.best_by_date == "2029-01-01");
         assert(items[0].operation == "READ");
 
         cout << "[PASS] Refresh cached Product snapshot\n";

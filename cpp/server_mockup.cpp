@@ -29,12 +29,12 @@ mutex searchMutex;
 mutex mockDataMutex;
 unsigned int nextMockProductId = 1001;
 
-json mockProducts = json::array({{{"id", "P00001"}, {"product_name", "Power Bank"}, {"made_date", "2026-09-01"}, {"arrived_time", "2026-09-03"}, {"best_by_date", "2028-09-01"}, {"status", "AVAILABLE"}, {"quantity", 12}},
-                                 {{"id", "P00002"}, {"product_name", "USB Cable"}, {"made_date", "2026-08-12"}, {"arrived_time", "2026-08-15"}, {"best_by_date", "2027-08-12"}, {"status", "AVAILABLE"}, {"quantity", 30}},
-                                 {{"id", "P00003"}, {"product_name", "Laptop Stand"}, {"made_date", "2026-07-20"}, {"arrived_time", "2026-07-22"}, {"best_by_date", "2028-07-20"}, {"status", "AVAILABLE"}, {"quantity", 8}},
-                                 {{"id", "P00004"}, {"product_name", "Coffee Beans"}, {"made_date", "2025-08-01"}, {"arrived_time", "2025-08-03"}, {"best_by_date", "2026-08-01"}, {"status", "EXPIRED"}, {"quantity", 5}},
-                                 {{"id", "P00005"}, {"product_name", "Mechanical Keyboard"}, {"made_date", "2026-09-10"}, {"arrived_time", "2026-09-12"}, {"best_by_date", "2029-09-10"}, {"status", "AVAILABLE"}, {"quantity", 6}},
-                                 {{"id", "P00006"}, {"product_name", "Power Bank"}, {"made_date", "2026-06-05"}, {"arrived_time", "2026-06-08"}, {"best_by_date", "2028-06-05"}, {"status", "AVAILABLE"}, {"quantity", 4}}});
+json mockProducts = json::array({{{"id", "P00001"}, {"product_name", "Power Bank"}, {"made_date", "2026-09-01"}, {"arrived_time", "2026-09-03"}, {"best_by_date", "2028-09-01"}, {"status", "AVAILABLE"}},
+                                 {{"id", "P00002"}, {"product_name", "USB Cable"}, {"made_date", "2026-08-12"}, {"arrived_time", "2026-08-15"}, {"best_by_date", "2027-08-12"}, {"status", "AVAILABLE"}},
+                                 {{"id", "P00003"}, {"product_name", "Laptop Stand"}, {"made_date", "2026-07-20"}, {"arrived_time", "2026-07-22"}, {"best_by_date", "2028-07-20"}, {"status", "AVAILABLE"}},
+                                 {{"id", "P00004"}, {"product_name", "Coffee Beans"}, {"made_date", "2025-08-01"}, {"arrived_time", "2025-08-03"}, {"best_by_date", "2026-08-01"}, {"status", "EXPIRED"}},
+                                 {{"id", "P00005"}, {"product_name", "Mechanical Keyboard"}, {"made_date", "2026-09-10"}, {"arrived_time", "2026-09-12"}, {"best_by_date", "2029-09-10"}, {"status", "AVAILABLE"}},
+                                 {{"id", "P00006"}, {"product_name", "Power Bank"}, {"made_date", "2026-06-05"}, {"arrived_time", "2026-06-08"}, {"best_by_date", "2028-06-05"}, {"status", "AVAILABLE"}}});
 
 vector<json> recentOperations = {
     {{"product", mockProducts[2]}, {"operation", "SEARCH"}, {"time", "2026-09-29 09:42:00"}},
@@ -94,7 +94,7 @@ void setupCORS(Server &server)
 // ============================================================
 // POST /product/add
 // Request JSON: product_name, made_date, arrived_time, best_by_date, quantity.
-// Response: 501 until product creation logic is connected.
+// quantity controls how many products are created; it is not stored per product.
 // ============================================================
 
 void setupAddProductEndpoint(Server &server)
@@ -131,34 +131,37 @@ void setupAddProductEndpoint(Server &server)
                 return;
             }
 
-            json product;
+            const int quantity = payload["quantity"].get<int>();
+            json createdProducts = json::array();
             {
                 lock_guard<mutex> lock(mockDataMutex);
-                product = {
-                    {"id", "MOCK-" + to_string(nextMockProductId++)},
-                    {"product_name", payload["product_name"]},
-                    {"made_date", payload["made_date"]},
-                    {"arrived_time", payload["arrived_time"]},
-                    {"best_by_date", payload["best_by_date"]},
-                    {"status", "AVAILABLE"},
-                    {"quantity", payload["quantity"]}};
-                mockProducts.push_back(product);
-                recordRecentOperation(product, "ADD");
+                for (int i = 0; i < quantity; i++)
+                {
+                    json product = {
+                        {"id", "MOCK-" + to_string(nextMockProductId++)},
+                        {"product_name", payload["product_name"]},
+                        {"made_date", payload["made_date"]},
+                        {"arrived_time", payload["arrived_time"]},
+                        {"best_by_date", payload["best_by_date"]},
+                        {"status", "AVAILABLE"}};
+                    mockProducts.push_back(product);
+                    createdProducts.push_back(product);
+                    recordRecentOperation(product, "ADD");
+                }
             }
 
             res.status = 201;
             res.set_content(
-                json{{"success", true}, {"product", product}}.dump(),
+                json{{"success", true}, {"products", createdProducts}}.dump(),
                 "application/json");
 
-            cout << "[API] Added mock product " << product["id"] << '\n';
+            cout << "[API] Added " << quantity << " mock products\n";
         });
 }
 
 // ============================================================
 // DELETE /product/delete
 // Request JSON: { "id": "<product-id>" }
-// Response: 501 until product deletion logic is connected.
 // ============================================================
 
 void setupDeleteProductEndpoint(Server &server)

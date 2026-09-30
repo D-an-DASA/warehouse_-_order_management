@@ -25,7 +25,7 @@ public:
     HashTable();
     ~HashTable();
 
-    void insert(const Product& p);
+    bool insert(const Product& p);
     Product* search(const string& id);
     bool remove(const string& id);
 
