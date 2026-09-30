@@ -1,4 +1,5 @@
 #include "SearchCore.h"
+#include "Min_heap/Min_heap.h"
 
 #include <algorithm>
 #include <cctype>
@@ -169,4 +170,44 @@ bool SearchCore::deleteProduct(const string& id) {
     }
     recentActions.Put(removed, "DELETE");
     return true;
+}
+
+// Tim theo ID hoac prefix, xep ket qua bang Min Heap.
+vector<Product> SearchCore::search(
+    const string& query,
+    size_t limit
+) {
+    const string key = normalizeText(query);
+    if (key.empty() || limit == 0) {
+        return {};
+    }
+
+    string id = key;
+    if (id.front() == '#') {
+        id.erase(0, 1);
+    }
+    if (!id.empty() && id.front() == 'p') {
+        id.front() = 'P';
+    }
+    Product* exactMatch = productTable.search(id);
+    if (exactMatch != nullptr) {
+        recentActions.Put(*exactMatch, "READ");
+        return {*exactMatch};
+    }
+
+    // Heap chi song trong ham; khong them/xoa khi dang dung pointer HashTable.
+    // Resize cua HashTable co the lam pointer cu mat hieu luc.
+    ProductMinHeap heap;
+    for (const string& productId : productNameTrie.searchByPrefix(key)) {
+        Product* product = productTable.search(productId);
+        if (product != nullptr) {
+            heap.push(product);
+        }
+    }
+
+    vector<Product> results;
+    while (!heap.empty() && results.size() < limit) {
+        results.push_back(*heap.pop());
+    }
+    return results;
 }
