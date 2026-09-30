@@ -109,6 +109,9 @@ private:
 public:
     LRU_Cache() {}
 
+    LRU_Cache(const LRU_Cache&) = delete; // Cấm tạo một LRU_Cache mới bằng cách sao chép LRU_Cache cũ.
+    LRU_Cache& operator=(const LRU_Cache&) = delete; // Cấm gán một LRU_Cache vào LRU_Cache khác.
+
     ~LRU_Cache()
     {
         Node *cur = head;
