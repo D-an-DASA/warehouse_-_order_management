@@ -9,6 +9,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_set>
 
 using namespace std;
 
@@ -210,4 +211,39 @@ vector<Product> SearchCore::search(
         results.push_back(*heap.pop());
     }
     return results;
+}
+
+// Goi y ten khong trung lap, sap thu tu truoc khi lay limit.
+vector<string> SearchCore::autocomplete(
+    const string& prefix,
+    size_t limit
+) {
+    const string key = normalizeText(prefix);
+    if (key.empty() || limit == 0) {
+        return {};
+    }
+
+    vector<string> names;
+    unordered_set<string> seen;
+    for (const string& id : productNameTrie.searchByPrefix(key)) {
+        Product* product = productTable.search(id);
+        if (product != nullptr && seen.insert(product->product_name).second) {
+            names.push_back(product->product_name);
+        }
+    }
+    sort(names.begin(), names.end());
+    if (names.size() > limit) {
+        names.resize(limit);
+    }
+    return names;
+}
+
+// Lay thao tac gan nhat cua tung ID theo thu tu LRU.
+vector<CacheItem> SearchCore::getRecent() const {
+    return recentActions.GetAll();
+}
+
+// Lay so Product truc tiep tu nguon du lieu chinh.
+int SearchCore::size() const {
+    return productTable.getSize();
 }
