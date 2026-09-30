@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -120,4 +121,52 @@ bool SearchCore::loadCSV(const string& filename) {
     }
 
     return file.eof();
+}
+
+// Them mot Product va dong bo index ten, recent.
+bool SearchCore::addProduct(Product& product) {
+    if (nextProductNumber == numeric_limits<unsigned long long>::max()) {
+        return false;
+    }
+    ostringstream id;
+    id << 'P' << setw(idWidth) << setfill('0')
+       << nextProductNumber;
+
+    Product created = product;
+    created.id = id.str();
+    if (created.status != "AVAILABLE" &&
+        created.status != "RESERVED" &&
+        created.status != "EXPIRED") {
+        created.status = "AVAILABLE";
+    }
+    if (!productTable.insert(created)) {
+        return false;
+    }
+
+    productNameTrie.insert(normalizeText(created.product_name), created.id);
+    recentActions.Put(created, "ADD");
+    updateIdCounter(created.id);
+    product = created;
+    return true;
+}
+
+// Xoa Product, dong bo Trie va luu ban copy cho thao tac DELETE.
+bool SearchCore::deleteProduct(const string& id) {
+    Product* product = productTable.search(id);
+    if (product == nullptr) {
+        return false;
+    }
+
+    const Product removed = *product;
+    const string key = normalizeText(removed.product_name);
+    if (!productNameTrie.remove(key, id)) {
+        return false;
+    }
+
+    if (!productTable.remove(id)) {
+        productNameTrie.insert(key, id);
+        return false;
+    }
+    recentActions.Put(removed, "DELETE");
+    return true;
 }
