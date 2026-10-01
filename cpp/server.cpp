@@ -1,18 +1,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <sstream>
 #include <mutex>
-#include <algorithm>
-#include <cctype>
-#include <iomanip>
 
 #include "src/httplib.h"
 #include "src/json.hpp"
-#include "DSAcore/LRU_Cache/LRU_Cache.h"
-#include "DSAcore/hashtable/hashtable.h"
+#include "DSAcore/Product.h"
+#include "DSAcore/SearchCore.h"
 
+SearchCore searchCore;
 using namespace std;
 using namespace httplib;
 
@@ -31,40 +27,6 @@ string lastProcessedQuery;
 // Current search result.
 json currentSearchResult = json::array();
 
-// Products are loaded once at startup and looked up by exact ID.
-HashTable productTable;
-unsigned long long nextProductNumber = 1;
-size_t productIdWidth = 5;
-
-void updateProductIdCounter(const string &id)
-{
-    if (id.size() < 2 || id[0] != 'P' ||
-        !all_of(id.begin() + 1, id.end(), [](unsigned char character)
-                { return isdigit(character) != 0; }))
-    {
-        return;
-    }
-
-    try
-    {
-        unsigned long long number = stoull(id.substr(1));
-        productIdWidth = max(productIdWidth, id.size() - 1);
-        nextProductNumber = max(nextProductNumber, number + 1);
-    }
-    catch (...)
-    {
-        // Ignore IDs that are too large to use for the counter.
-    }
-}
-
-string generateProductId()
-{
-    ostringstream output;
-    output << 'P' << setw(static_cast<int>(productIdWidth))
-           << setfill('0') << nextProductNumber++;
-    return output.str();
-}
-
 json productToJson(const Product &product)
 {
     return {
@@ -74,39 +36,6 @@ json productToJson(const Product &product)
         {"arrived_time", product.arrived_time},
         {"best_by_date", product.best_by_date},
         {"status", product.status}};
-}
-
-bool loadProductTable(const string &filename)
-{
-    ifstream file(filename);
-    if (!file.is_open())
-    {
-        cerr << "Cannot open product inventory: " << filename << '\n';
-        return false;
-    }
-
-    string line;
-    getline(file, line); // CSV header
-    while (getline(file, line))
-    {
-        if (line.empty()) continue;
-
-        stringstream row(line);
-        Product product;
-        getline(row, product.id, ',');
-        getline(row, product.product_name, ',');
-        getline(row, product.made_date, ',');
-        getline(row, product.arrived_time, ',');
-        getline(row, product.best_by_date, ',');
-        getline(row, product.status, ',');
-        if (!productTable.insert(product))
-        {
-            cerr << "Duplicate product ID in inventory: " << product.id << '\n';
-            return false;
-        }
-        updateProductIdCounter(product.id);
-    }
-    return true;
 }
 
 // Protect shared search state because HTTP handlers
@@ -191,14 +120,13 @@ void setupAddProductEndpoint(Server &server)
             for (int i = 0; i < quantity; i++)
             {
                 Product product;
-                product.id = generateProductId();
                 product.product_name = payload["product_name"].get<string>();
                 product.made_date = payload["made_date"].get<string>();
                 product.arrived_time = payload["arrived_time"].get<string>();
                 product.best_by_date = payload["best_by_date"].get<string>();
                 product.status = "AVAILABLE";
 
-                if (!productTable.insert(product))
+                if (!searchCore.addProduct(product))
                 {
                     res.status = 500;
                     res.set_content(json{{"success", false}, {"message", "Could not generate a unique product ID."}}.dump(), "application/json");
@@ -253,7 +181,7 @@ void setupDeleteProductEndpoint(Server &server)
             const string productId = payload["id"].get<string>();
             lock_guard<mutex> lock(searchMutex);
 
-            if (!productTable.remove(productId))
+            if (!searchCore.deleteProduct(productId))
             {
                 res.status = 404;
                 res.set_content(json{{"success", false}, {"message", "Product not found."}}.dump(), "application/json");
@@ -291,12 +219,16 @@ void setupRecentProductEndpoint(Server &server)
         [](const Request &, Response &res)
         {
             cout << "[API] GET /product/recent\n";
-
-            // TODO:
-            // Connect this endpoint to the actual LRU Cache.
+            lock_guard<mutex> lock(searchMutex);
 
             json response = json::array();
-
+            for (const CacheItem &item : searchCore.getRecent())
+            {
+                json recent = productToJson(item.product);
+                recent["time"] = item.time;
+                recent["operation"] = item.operation;
+                response.push_back(move(recent));
+            }
             res.set_content(
                 response.dump(),
                 "application/json");
@@ -376,15 +308,8 @@ void setupAutocompleteEndpoint(Server &server)
                 << " | prefix: " << prefix
                 << "\n";
 
-            // TODO:
-            // Connect prefix search to the actual Trie.
-            //
-            // Example:
-            //
-            // vector<string> suggestions =
-            //     trie.getSuggestions(prefix);
-
-            json response = json::array();
+            lock_guard<mutex> lock(searchMutex);
+            json response = searchCore.autocomplete(prefix);
 
             res.set_content(
                 response.dump(),
@@ -430,10 +355,9 @@ void setupSearchResultEndpoint(Server &server)
                     << "\n";
 
                 currentSearchResult = json::array();
-                Product *product = productTable.search(currentSearchQuery);
-                if (product != nullptr)
+                for (const Product &product : searchCore.search(currentSearchQuery))
                 {
-                    currentSearchResult.push_back(productToJson(*product));
+                    currentSearchResult.push_back(productToJson(product));
                 }
 
                 lastProcessedQuery =
@@ -460,7 +384,7 @@ void setupSearchResultEndpoint(Server &server)
 
 int main()
 {
-    if (!loadProductTable("cpp/product_inventory_100 000.csv"))
+    if (!searchCore.loadCSV("cpp/product_inventory_100 000.csv"))
     {
         return 1;
     }
