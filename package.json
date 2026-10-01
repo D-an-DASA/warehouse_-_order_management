@@ -1,0 +1,10 @@
+{
+  "name": "warehouse-order-management-tests",
+  "private": true,
+  "scripts": {
+    "test:web": "node tests/web_e2e.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
+}

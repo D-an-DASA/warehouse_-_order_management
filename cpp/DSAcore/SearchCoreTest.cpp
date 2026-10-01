@@ -1,397 +1,249 @@
 #include "SearchCore.h"
 
 #include <cassert>
-#include <chrono>
-#include <filesystem>
-#include <fstream>
 #include <iostream>
-#include <limits>
-#include <stdexcept>
+#include <string>
+#include <vector>
 
 #ifdef NDEBUG
 #error SearchCoreTest requires assertions; do not compile with NDEBUG.
 #endif
 
 using namespace std;
-namespace fs = std::filesystem;
 
 namespace {
 
 int passed = 0;
-const string header =
-    "id,product_name,made_date,arrived_time,best_by_date,status\n";
-const string sampleRows =
-    "P00001,Power Bank,2025-01-01,2026-01-01 08:00:00,2028-01-01,AVAILABLE\n"
-    "P00002,Power Bank,2025-01-01,2026-02-01 08:00:00,2027-01-01,RESERVED\n"
-    "P00003,Power Bank,2025-01-01,2026-01-01 08:00:00,2027-01-01,EXPIRED\n"
-    "P00004,Power Bank,2025-01-01,2026-01-01 08:00:00,2027-01-01,AVAILABLE\n"
-    "P00005,Power Cable,2025-01-01,2026-01-01 08:00:00,2029-01-01,AVAILABLE\n";
 
 void pass(const string& name) {
-    cout << "PASS " << ++passed << ": " << name << endl;
+    cout << "PASS " << ++passed << ": " << name << '\n';
 }
 
-// Moi fixture la mot file rieng trong thu muc tam cua lan chay nay.
-string writeCSV(const fs::path& directory, const string& contents) {
-    static int fileNumber = 0;
-    fs::path path = directory / (to_string(++fileNumber) + ".csv");
-    ofstream file(path, ios::binary);
-    file << contents;
-    file.close();
-    assert(file.good());
-    return path.string();
+Product product(const string& id, const string& name,
+                const string& bestBy, const string& arrived,
+                const string& status) {
+    return {id, name, "2025-01-01", arrived, bestBy, status};
 }
 
 vector<string> idsOf(const vector<Product>& products) {
     vector<string> ids;
-    for (const Product& product : products) {
-        ids.push_back(product.id);
+    for (const Product& item : products) {
+        ids.push_back(item.id);
     }
     return ids;
 }
 
-Product makeProduct(const string& name, const string& status = "") {
-    return {"", name, "2026-01-01", "2026-01-02 08:00:00",
-            "2027-01-01", status};
+vector<Product> sampleProducts() {
+    return {
+        product("P00001", "Power Bank", "2028-01-01",
+                "2026-01-01 08:00:00", "AVAILABLE"),
+        product("P00002", "Power Bank", "2027-01-01",
+                "2026-02-01 08:00:00", "RESERVED"),
+        product("P00003", "Power Bank", "2026-01-01",
+                "2026-01-01 08:00:00", "EXPIRED"),
+        product("P00004", "Power Bank", "2027-01-01",
+                "2026-01-01 08:00:00", "AVAILABLE"),
+        product("P00005", "Power Cable", "2029-01-01",
+                "2026-01-01 08:00:00", "AVAILABLE")
+    };
 }
 
-void testMainFlows(const fs::path& directory) {
+void testLoadAndMc1() {
     SearchCore core;
-    assert(core.loadCSV(writeCSV(directory, header + sampleRows)));
-    assert(core.getRecent().empty());
-    pass("loadCSV thanh cong, khong ghi recent");
-
+    string error;
+    assert(core.loadProducts(sampleProducts(), error));
     assert(core.size() == 5);
-    pass("size dung sau loadCSV");
 
-    vector<Product> found = core.search("P00001");
-    assert(found.size() == 1);
-    assert(found[0].id == "P00001");
-    assert(found[0].product_name == "Power Bank");
-    assert(found[0].made_date == "2025-01-01");
-    assert(found[0].arrived_time == "2026-01-01 08:00:00");
-    assert(found[0].best_by_date == "2028-01-01");
-    assert(found[0].status == "AVAILABLE");
-    pass("tim ID va giu du 6 truong Product");
+    Product found;
+    assert(core.findById("  #p00001 ", found));
+    assert(found.id == "P00001");
+    assert(found.product_name == "Power Bank");
+    assert(core.getRecent().size() == 1);
+    assert(core.getRecent()[0].operation == "READ");
 
-    assert(core.search("Power B").size() == 4);
-    assert(core.search("ower").empty());
-    pass("tim theo prefix, khong tim substring");
+    assert(core.findById("P00003", found));
+    assert(found.status == "EXPIRED");
+    assert(!core.findById("P99999", found));
+    assert(!core.findById("bad-id", found));
+    pass("MC1 tra cuu exact ID, chuan hoa va not-found");
+}
 
-    assert(idsOf(core.search("  POWER \t  bank  ")) ==
-           idsOf(core.search("power bank")));
-    assert(core.search("  POWER \t  bank  ").size() == 4);
-    pass("normalize chu hoa, trim va gom khoang trang");
+void testMc2Preview() {
+    SearchCore core;
+    string error;
+    assert(core.loadProducts(sampleProducts(), error));
 
-    assert(core.search("#P00001").at(0).id == "P00001");
-    assert(core.search("p00001").at(0).id == "P00001");
-    assert(core.search("  #p00001 \t").at(0).id == "P00001");
-    pass("chap nhan ID thuong va ID co dau #");
+    const vector<Product> preview = core.previewPriority(" power bank ", 20);
+    assert((idsOf(preview) == vector<string>{"P00004", "P00001"}));
+    for (const Product& item : preview) {
+        assert(item.status == "AVAILABLE");
+    }
+    assert(core.getRecent().empty());
 
-    assert((core.autocomplete("  POWER  ") ==
+    assert((idsOf(core.previewPriority("POWER", 2)) ==
+            vector<string>{"P00004", "P00001"}));
+    assert(core.previewPriority("power", 1).size() == 1);
+    assert(core.previewPriority("missing", 20).empty());
+    assert(core.previewPriority("", 20).empty());
+    assert(core.previewPriority("power", 0).empty());
+    pass("MC2 chi preview AVAILABLE va dung thu tu ba khoa");
+}
+
+void testPriorityTieBreaks() {
+    SearchCore core;
+    string error;
+    const vector<Product> products = {
+        product("P00003", "Milk", "2027-01-01", "2026-02-01", "AVAILABLE"),
+        product("P00002", "Milk", "2027-01-01", "2026-01-01", "AVAILABLE"),
+        product("P00001", "Milk", "2027-01-01", "2026-01-01", "AVAILABLE")
+    };
+    assert(core.loadProducts(products, error));
+    assert((idsOf(core.previewPriority("milk")) ==
+            vector<string>{"P00001", "P00002", "P00003"}));
+    pass("MC2 tie-break arrived_time roi id");
+}
+
+void testTrieAndSynchronization() {
+    SearchCore core;
+    string error;
+    assert(core.loadProducts(sampleProducts(), error));
+    assert((core.autocomplete(" power ") ==
             vector<string>{"Power Bank", "Power Cable"}));
-    pass("autocomplete tra ten hien thi theo thu tu on dinh");
+    assert((core.autocomplete("power", 1) == vector<string>{"Power Bank"}));
 
-    assert((core.autocomplete("power b") == vector<string>{"Power Bank"}));
-    pass("autocomplete khong lap ten cua nhieu Product");
-
-    Product added = makeProduct("Power Adapter");
-    assert(core.addProduct(added));
+    Product added{"", "Power Adapter", "2026-01-01", "2026-01-02",
+                  "2027-01-01", ""};
+    assert(core.addProduct(added, error));
     assert(added.id == "P00006");
     assert(added.status == "AVAILABLE");
-    pass("addProduct sinh ID tiep theo va status mac dinh");
-
-    assert(core.size() == 6);
-    assert(core.search(added.id).at(0).product_name == "Power Adapter");
-    assert((idsOf(core.search("power a")) == vector<string>{added.id}));
+    Product found;
+    assert(core.findById(added.id, found, false));
     assert((core.autocomplete("power a") == vector<string>{"Power Adapter"}));
-    pass("addProduct dong bo HashTable va Trie");
+    assert(idsOf(core.previewPriority("power a")) == vector<string>{"P00006"});
 
-    assert(core.deleteProduct(added.id));
-    assert(core.size() == 5);
-    assert(core.search(added.id).empty());
-    pass("deleteProduct xoa khoi HashTable");
-
-    assert(core.search("power a").empty());
+    assert(core.deleteProduct("#p00006", error));
+    assert(!core.findById("P00006", added, false));
     assert(core.autocomplete("power a").empty());
-    pass("deleteProduct loai ket qua prefix va autocomplete");
-
-    assert(core.deleteProduct("P00003"));
-    assert((idsOf(core.search("power bank")) ==
-            vector<string>{"P00004", "P00002", "P00001"}));
-    assert((core.autocomplete("power b") == vector<string>{"Power Bank"}));
-    pass("xoa mot ID van giu cac Product cung ten");
-
-    SearchCore ranked;
-    assert(ranked.loadCSV(writeCSV(directory, header + sampleRows)));
-    assert((idsOf(ranked.search("power bank")) ==
-            vector<string>{"P00003", "P00004", "P00002", "P00001"}));
-    pass("Min Heap uu tien best_by_date, arrived_time, roi ID");
-
-    assert((idsOf(ranked.search("power bank", 1)) == vector<string>{"P00003"}));
-    assert((idsOf(ranked.search("power bank", 2)) ==
-            vector<string>{"P00003", "P00004"}));
-    assert(ranked.search("power", 100).size() == 5);
-    pass("search limit duoc ap dung sau xep hang");
-
-    assert((ranked.autocomplete("power", 1) == vector<string>{"Power Bank"}));
-    assert(ranked.autocomplete("power", 100).size() == 2);
-    pass("autocomplete limit duoc ap dung sau sap ten");
-
-    SearchCore recent;
-    Product item = makeProduct("Recent Item");
-    assert(recent.addProduct(item));
-    assert(recent.getRecent().size() == 1);
-    assert(recent.getRecent()[0].operation == "ADD");
-    assert(!recent.getRecent()[0].time.empty());
-    assert(recent.deleteProduct(item.id));
-    const vector<CacheItem> actions = recent.getRecent();
-    assert(actions.size() == 1);
-    assert(actions[0].operation == "DELETE");
-    assert(actions[0].product.id == item.id);
-    assert(actions[0].product.product_name == item.product_name);
-    assert(!actions[0].time.empty());
-    assert(recent.size() == 0);
-    pass("recent ADD/DELETE giu ban copy va thao tac moi nhat theo ID");
-
-    assert(ranked.search("").empty());
-    assert(ranked.search(" \t\n ").empty());
-    assert(ranked.search("power", 0).empty());
-    assert(ranked.search("P00001", 0).empty());
-    assert(ranked.autocomplete("").empty());
-    assert(ranked.autocomplete(" \t ").empty());
-    assert(ranked.autocomplete("power", 0).empty());
-    assert(ranked.getRecent().empty());
-    pass("query rong va limit 0 khong tao ket qua hoac recent");
-
-    assert(ranked.search("P77777").empty());
-    assert(ranked.search("#").empty());
-    assert(ranked.autocomplete("absent").empty());
-    assert(!ranked.deleteProduct("P77777"));
-    assert(!recent.deleteProduct(item.id));
-    assert(ranked.size() == 5);
-    pass("tim va xoa ID khong ton tai an toan");
-
-    assert(recent.addProduct(item));
-    const vector<CacheItem> before = recent.getRecent();
-    assert(recent.search("recent").size() == 1);
-    assert(recent.autocomplete("recent").size() == 1);
-    const vector<CacheItem> after = recent.getRecent();
-    assert(before.size() == after.size());
-    for (size_t i = 0; i < before.size(); ++i) {
-        assert(before[i].product.id == after[i].product.id);
-        assert(before[i].operation == after[i].operation);
-        assert(before[i].time == after[i].time);
-    }
-    pass("prefix search va autocomplete khong thay doi recent");
-
-    assert(recent.search(item.id).size() == 1);
-    assert(recent.getRecent()[0].operation == "READ");
-    assert(recent.getRecent()[0].product.id == item.id);
-    pass("exact ID search ghi READ");
-
-    SearchCore statuses;
-    for (const string status : {"AVAILABLE", "RESERVED", "EXPIRED", "invalid", ""}) {
-        Product product = makeProduct("Status Item", status);
-        assert(statuses.addProduct(product));
-        const string expected = (status == "invalid" || status.empty())
-                                    ? "AVAILABLE" : status;
-        assert(product.status == expected);
-        assert(statuses.search(product.id).at(0).status == expected);
-    }
-    assert(statuses.search("status").size() == 5);
-    pass("giu status hop le, mac dinh status sai, khong loc search");
-
-    SearchCore display;
-    Product spaced = makeProduct("  Power   Bank ");
-    assert(display.addProduct(spaced));
-    assert(display.search("POWER BANK").at(0).product_name == "  Power   Bank ");
-    assert(display.autocomplete("power bank").at(0) == "  Power   Bank ");
-    assert(display.deleteProduct(spaced.id));
-    assert(display.autocomplete("power bank").empty());
-    pass("normalize index khi them/xoa, giu nguyen ten hien thi");
+    assert(core.previewPriority("power a").empty());
+    assert(core.getRecent()[0].operation == "DELETE");
+    pass("Hash Table va Trie dong bo sau add/delete");
 }
 
-void testIdAndResize(const fs::path& directory) {
-    SearchCore rollover;
-    assert(rollover.loadCSV(writeCSV(directory, header +
-        "P99999,Boundary,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\n")));
-    Product product = makeProduct("Boundary");
-    assert(rollover.addProduct(product));
-    assert(product.id == "P100000");
-    assert(rollover.addProduct(product));
-    assert(product.id == "P100001");
-    pass("tang ID qua P99999");
+void testReserveRemovesFromPriorityButKeepsHashEntry() {
+    SearchCore core;
+    string error;
+    assert(core.loadProducts({
+        product("P00001", "Sua tuoi", "2026-10-05",
+                "2026-01-01 08:00:00", "AVAILABLE"),
+        product("P00002", "Sua tuoi", "2026-10-06",
+                "2026-01-01 08:00:00", "AVAILABLE"),
+        product("P00003", "Sua tuoi", "2026-10-04",
+                "2026-01-01 08:00:00", "EXPIRED")
+    }, error));
 
-    SearchCore sixDigits;
-    assert(sixDigits.loadCSV(writeCSV(directory, header +
-        "P000100,Six Digits,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\n"
-        "P000002,Six Digits,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\n")));
-    assert(sixDigits.addProduct(product));
-    assert(product.id == "P000101");
-    pass("giu do rong 6 chu so va lay ID lon nhat du CSV khong sap thu tu");
+    Product reserved;
+    assert(core.reserveProduct("p00001", reserved, error));
+    assert(reserved.id == "P00001");
+    assert(reserved.status == "RESERVED");
 
-    SearchCore resized;
-    vector<string> expectedIds;
-    for (int i = 0; i < 200; ++i) {
-        Product added = makeProduct("Resize Item");
-        assert(resized.addProduct(added));
-        expectedIds.push_back(added.id);
-    }
-    assert(resized.size() == 200);
-    const vector<Product> snapshot = resized.search("resize", 500);
-    assert(idsOf(snapshot) == expectedIds);
-    for (const string& id : expectedIds) {
-        assert(resized.search(id).at(0).id == id);
-    }
-    assert(resized.deleteProduct(expectedIds.front()));
-    assert(resized.deleteProduct(expectedIds.back()));
-    expectedIds.erase(expectedIds.begin());
-    expectedIds.pop_back();
-    assert(idsOf(resized.search("resize", 500)) == expectedIds);
-    assert(snapshot.size() == 200);
-    assert(snapshot.front().id == "P00001");
-    pass("HashTable resize, search lai, xoa va ban copy ket qua an toan");
+    const vector<Product> priority = core.previewPriority("sua tuoi");
+    assert(priority.size() == 1);
+    assert(priority[0].id == "P00002");
 
-    SearchCore lru;
-    vector<string> addedIds;
-    for (int i = 0; i < 12; ++i) {
-        Product added = makeProduct("LRU Item");
-        assert(lru.addProduct(added));
-        addedIds.push_back(added.id);
-    }
-    vector<CacheItem> actions = lru.getRecent();
-    assert(actions.size() == 10);
-    for (size_t i = 0; i < actions.size(); ++i) {
-        assert(actions[i].product.id == addedIds[11 - i]);
-    }
-    assert(lru.search(addedIds[2]).size() == 1);
-    assert(lru.getRecent().front().product.id == addedIds[2]);
-    assert(lru.deleteProduct(addedIds[0]));
-    assert(lru.getRecent().size() == 10);
-    assert(lru.getRecent().front().product.id == addedIds[0]);
-    assert(lru.getRecent().front().operation == "DELETE");
-    pass("LRU toi da 10 ID, cap nhat thu tu va ghi DELETE cho ID da bi day ra");
+    Product exact;
+    assert(core.findById("P00001", exact, false));
+    assert(exact.status == "RESERVED");
+
+    assert(!core.reserveProduct("P00001", reserved, error));
+    assert(error == "Chi san pham AVAILABLE moi duoc chuan bi.");
+    assert(!core.reserveProduct("P00003", reserved, error));
+
+    const vector<CacheItem> recent = core.getRecent();
+    assert(!recent.empty());
+    assert(recent.front().operation == "RESERVE");
+    pass("Reserve cap nhat Hash Table va loai khoi previewPriority");
 }
 
-void testCsvErrors(const fs::path& directory) {
-    SearchCore missing;
-    assert(!missing.loadCSV((directory / "missing.csv").string()));
-    assert(!missing.loadCSV(writeCSV(directory, "")));
-    assert(missing.size() == 0);
-    assert(missing.loadCSV(writeCSV(directory, header)));
-    pass("CSV khong ton tai, file rong va chi co header");
-
-    SearchCore partial;
-    assert(!partial.loadCSV(writeCSV(directory, header + sampleRows +
-        "P00006,Missing Columns\n")));
-    assert(partial.size() == 5);
-    assert(partial.search("power").size() == 5);
-    assert(partial.search("P00006").empty());
-    assert(partial.getRecent().empty());
-    Product next = makeProduct("After Error");
-    assert(partial.addProduct(next));
-    assert(next.id == "P00006");
-    SearchCore extra;
-    assert(!extra.loadCSV(writeCSV(directory, header +
-        "P00001,Extra,a,b,c,AVAILABLE,unexpected\n")));
-    assert(extra.size() == 0);
-    pass("CSV sai so cot: giu dong hop le, khong insert dong loi");
-
-    for (const string id : {"", "P", "X00001", "p00001", "P12x", "P-1",
-                             "P18446744073709551615", "P18446744073709551616"}) {
-        SearchCore invalid;
-        assert(!invalid.loadCSV(writeCSV(directory, header + id +
-            ",Bad ID,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\n")));
-        assert(invalid.size() == 0);
-        assert(invalid.search("bad").empty());
-        assert(invalid.getRecent().empty());
-        Product first = makeProduct("Valid");
-        assert(invalid.addProduct(first));
-        assert(first.id == "P00001");
-    }
-    pass("ID sai dang hoac vuot gioi han khong gay exception hay mat dong bo");
+void testValidationAndAtomicLoad() {
+    string error;
+    SearchCore invalidLoad;
+    vector<Product> invalid = sampleProducts();
+    invalid.push_back(product("bad", "Bad", "2027-01-01",
+                              "2026-01-01", "AVAILABLE"));
+    assert(!invalidLoad.loadProducts(invalid, error));
+    assert(invalidLoad.size() == 0);
 
     SearchCore duplicate;
-    assert(!duplicate.loadCSV(writeCSV(directory, header + sampleRows +
-        "P00001,Wrong Name,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\n")));
-    assert(duplicate.size() == 5);
-    assert(duplicate.search("P00001").at(0).product_name == "Power Bank");
-    assert(duplicate.search("wrong").empty());
-    assert(duplicate.autocomplete("wrong").empty());
-    pass("CSV ID trung khong ghi de Product hoac them index sai");
+    vector<Product> duplicated = sampleProducts();
+    duplicated.push_back(duplicated.front());
+    assert(!duplicate.loadProducts(duplicated, error));
+    assert(duplicate.size() == 0);
 
-    SearchCore exhausted;
-    const string lastUsable = "P" +
-        to_string(numeric_limits<unsigned long long>::max() - 1);
-    assert(exhausted.loadCSV(writeCSV(directory, header + lastUsable +
-        ",Last,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\n")));
-    Product unchanged = makeProduct("Cannot Add", "EXPIRED");
-    unchanged.id = "original";
-    assert(!exhausted.addProduct(unchanged));
-    assert(unchanged.id == "original");
-    assert(unchanged.status == "EXPIRED");
-    assert(exhausted.size() == 1);
-    assert(exhausted.getRecent().empty());
-    pass("bo dem het mien gia tri tra false, khong tran va khong sua dau vao");
-
-    SearchCore crlf;
-    assert(crlf.loadCSV(writeCSV(directory,
-        "id,product_name,made_date,arrived_time,best_by_date,status\r\n"
-        "\r\n \t\r\n"
-        "P00001,  Power   Bank ,2026-01-01,2026-01-02,2027-01-01,AVAILABLE\r\n")));
-    assert(crlf.size() == 1);
-    const vector<Product> found = crlf.search("power bank");
-    assert(found.size() == 1);
-    assert(found[0].status == "AVAILABLE");
-    assert(found[0].product_name == "  Power   Bank ");
-    assert(crlf.deleteProduct("P00001"));
-    assert(crlf.autocomplete("power").empty());
-    pass("CSV CRLF, dong trang va ten nhieu khoang trang");
+    SearchCore core;
+    assert(core.loadProducts({}, error));
+    Product badName{"", "   ", "2026-01-01", "2026-01-02",
+                    "2027-01-01", "AVAILABLE"};
+    assert(!core.addProduct(badName, error));
+    Product badDate{"", "Valid", "2026-02-30", "2026-01-02",
+                    "2027-01-01", "AVAILABLE"};
+    assert(!core.addProduct(badDate, error));
+    Product csvInjection{"", "Bad,Name", "2026-01-01", "2026-01-02",
+                         "2027-01-01", "AVAILABLE"};
+    assert(!core.addProduct(csvInjection, error));
+    assert(core.size() == 0);
+    pass("validation va load loi khong de lai du lieu mot phan");
 }
 
-void testDataset(const string& filename, int count, const string& lastId,
-                 const string& nextId) {
+void testResizeAndGeneratedIds() {
     SearchCore core;
-    assert(core.loadCSV(filename));
-    assert(core.size() == count);
-    assert(core.getRecent().empty());
-    assert(core.search(lastId).at(0).id == lastId);
-    assert(!core.search("power bank").empty());
-    assert((core.autocomplete("power bank") == vector<string>{"Power Bank"}));
-    Product added = makeProduct("Dataset New Item");
-    assert(core.addProduct(added));
-    assert(added.id == nextId);
-    assert(core.deleteProduct(added.id));
-    assert(core.size() == count);
-    pass("dataset that " + to_string(count) + " Product va ID tiep theo");
+    string error;
+    vector<string> ids;
+    for (int i = 0; i < 200; ++i) {
+        Product item{"", "Resize Item", "2026-01-01", "2026-01-02",
+                     "2027-01-01", ""};
+        assert(core.addProduct(item, error));
+        ids.push_back(item.id);
+    }
+    assert(core.size() == 200);
+    assert(core.previewPriority("resize", 500).size() == 200);
+    for (const string& id : ids) {
+        Product found;
+        assert(core.findById(id, found, false));
+    }
+    pass("Hash Table resize van giu MC1, Trie va Min Heap preview");
+}
+
+void testRecentCapacityFifty() {
+    SearchCore core;
+    string error;
+    vector<string> ids;
+    for (int i = 0; i < 52; ++i) {
+        Product item{"", "Recent Item", "2026-01-01", "2026-01-02",
+                     "2027-01-01", ""};
+        assert(core.addProduct(item, error));
+        ids.push_back(item.id);
+    }
+    const vector<CacheItem> recent = core.getRecent();
+    assert(recent.size() == 50);
+    assert(recent.front().product.id == ids.back());
+    assert(recent.back().product.id == ids[2]);
+    Product found;
+    assert(core.findById(ids[10], found));
+    assert(core.getRecent().front().product.id == ids[10]);
+    pass("Recent Workspace gioi han 50 va dua READ len dau");
 }
 
 } // namespace
 
 int main() {
-    const auto runId = chrono::steady_clock::now().time_since_epoch().count();
-    const fs::path directory = fs::temp_directory_path() /
-        ("SearchCoreTest-" + to_string(runId));
-    if (!fs::create_directory(directory)) {
-        cerr << "Khong tao duoc thu muc test rieng\n";
-        return 1;
-    }
-
-    try {
-        testMainFlows(directory);
-        testIdAndResize(directory);
-        testCsvErrors(directory);
-        testDataset("cpp/product_inventory_10 000.csv", 10000, "P10000", "P10001");
-        testDataset("cpp/product_inventory_100 000.csv", 100000, "P100000", "P100001");
-    }
-    catch (const exception& error) {
-        cerr << "FAIL: " << error.what() << '\n';
-        fs::remove_all(directory);
-        return 1;
-    }
-
-    fs::remove_all(directory);
+    testLoadAndMc1();
+    testMc2Preview();
+    testPriorityTieBreaks();
+    testTrieAndSynchronization();
+    testReserveRemovesFromPriorityButKeepsHashEntry();
+    testValidationAndAtomicLoad();
+    testResizeAndGeneratedIds();
+    testRecentCapacityFifty();
     cout << "TOTAL: " << passed << '/' << passed << " PASS\n";
     return 0;
 }
