@@ -24,7 +24,7 @@ HashTable::~HashTable() {
 // Hàm băm: chuyển chuỗi ID thành index 0..cap-1
 // Công thức: hash = hash * 31 + ASCII(char) (giống Java)
 // ==========================================================
-int HashTable::hashFunc(const string& id, int cap) {
+int HashTable::hashFunc(const string& id, int cap) const {
     long long hashValue = 0;
 
     for (char c : id) {
@@ -94,6 +94,15 @@ Product* HashTable::search(const string& id) {
     return nullptr;                        // Không tìm thấy
 }
 
+const Product* HashTable::search(const string& id) const {
+    int idx = hashFunc(id, capacity);
+
+    for (const auto& p : buckets[idx]) {
+        if (p.id == id) return &p;
+    }
+    return nullptr;
+}
+
 // ==========================================================
 // Xóa sản phẩm theo ID
 // Trả về true nếu xóa thành công, false nếu không tìm thấy
@@ -110,4 +119,16 @@ bool HashTable::remove(const string& id) {
         }
     }
     return false;   // Không tìm thấy để xóa
+}
+
+vector<Product> HashTable::values() const {
+    vector<Product> result;
+    result.reserve(static_cast<size_t>(size));
+
+    for (const auto& bucket : buckets) {
+        for (const auto& product : bucket) {
+            result.push_back(product);
+        }
+    }
+    return result;
 }

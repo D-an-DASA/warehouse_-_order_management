@@ -12,58 +12,53 @@
 
 class SearchCore {
 private:
-    // Nguồn lưu Product chính, tìm chính xác bằng ID
     HashTable productTable;
-
-    // Mục lục tên sản phẩm, dùng để tìm theo tiền tố
     Trie productNameTrie;
-
-    // Lưu những thao tác hoặc sản phẩm gần đây
     LRU_Cache recentActions;
-
-    // Số sẽ được dùng để tạo ID sản phẩm tiếp theo
     unsigned long long nextProductNumber = 1;
-
-    // Số chữ số trong ID, ví dụ P00001 có độ rộng 5
     int idWidth = 5;
 
-    void updateIdCounter(
-        const std::string& id
-    );  // Cập nhật số thứ tự ID khi đọc dữ liệu CSV
+    static std::string normalizeText(const std::string& text);
+    static std::string normalizeId(const std::string& id);
+    static bool isValidProductId(const std::string& id);
+    static bool isValidDate(const std::string& value);
+    static bool isValidArrivedTime(const std::string& value);
+    static bool hasUnsafeCsvCharacters(const std::string& value);
+
+    bool validateProduct(Product& product, std::string& error) const;
+    void updateIdCounter(const std::string& id);
 
 public:
     SearchCore() = default;
-
-    // Không cho phép sao chép SearchCore
     SearchCore(const SearchCore&) = delete;
-
     SearchCore& operator=(const SearchCore&) = delete;
 
-    // Đọc dữ liệu ban đầu từ file CSV
-    bool loadCSV(const std::string& filename);
+    bool loadProducts(const std::vector<Product>& products, std::string& error);
+    bool addProduct(Product& product, std::string& error);
+    bool deleteProduct(const std::string& rawId, std::string& error);
+    bool reserveProduct(const std::string& rawId, Product& reserved,
+                        std::string& error);
 
-    // Thêm sản phẩm và ghi ID được sinh ra vào product
-    bool addProduct(Product& product);
+    bool findById(const std::string& rawId, Product& product,
+                  bool recordRecent = true);
 
-    // Xóa sản phẩm theo ID
-    bool deleteProduct(const std::string& id);
-
-    // Tìm chính xác theo ID, nếu không có thì tìm tên theo tiền tố
-    std::vector<Product> search(
-        const std::string& query,
+    std::vector<Product> previewPriority(
+        const std::string& rawPrefix,
         std::size_t limit = 50
     );
 
-    // Gợi ý tên sản phẩm theo tiền tố
-    std::vector<std::string> autocomplete(
-        const std::string& prefix,
-        std::size_t limit = 10
+    std::vector<Product> search(
+        const std::string& rawQuery,
+        std::size_t limit = 50
     );
 
-    // Lấy danh sách thao tác gần đây
-    std::vector<CacheItem> getRecent() const;
+    std::vector<std::string> autocomplete(
+        const std::string& rawPrefix,
+        std::size_t limit = 20
+    );
 
-    // Lấy tổng số sản phẩm trong HashTable
+    std::vector<CacheItem> getRecent() const;
+    std::vector<Product> getAllProducts() const;
     int size() const;
 };
 

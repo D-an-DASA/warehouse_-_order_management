@@ -18,7 +18,7 @@ private:
     int capacity;
     int size;
 
-    int hashFunc(const string& id, int cap);
+    int hashFunc(const string& id, int cap) const;
     void resize();
 
 public:
@@ -27,7 +27,9 @@ public:
 
     bool insert(const Product& p);
     Product* search(const string& id);
+    const Product* search(const string& id) const;
     bool remove(const string& id);
+    vector<Product> values() const;
 
     int getSize() const { return size; }
     int getCapacity() const { return capacity; }

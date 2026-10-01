@@ -31,7 +31,7 @@ private:
 
     unordered_map<string, Node *> table;
 
-    static const size_t MAX_SIZE = 10;
+    static const size_t MAX_SIZE = 50;
 
     string Cur_Time()
     {
