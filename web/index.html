@@ -1,139 +1,93 @@
 <!doctype html>
-
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <title>DASA</title>
-
+    <title>Quản lý kho DASA</title>
     <link rel="stylesheet" href="CSS/style.css" />
   </head>
-
   <body>
     <div class="app-content">
-      <!-- Header -->
       <div id="header"></div>
-
-      <!-- Navbar -->
       <div id="navbar"></div>
 
-      <!-- Main Content -->
       <main class="main-content">
-        <h1>Dashboard</h1>
+        <h1>Quản lý kho</h1>
 
-        <!-- ========================================= -->
-        <!-- Search -->
-        <!-- ========================================= -->
-
-        <section class="search-section">
+        <section class="search-section" aria-labelledby="searchTitle">
+          <h2 id="searchTitle" class="visually-hidden">Tìm kiếm sản phẩm</h2>
           <div class="search-bar">
-            <!--
-              The input and suggestion box share this wrapper.
-
-              This allows the suggestion box to be positioned
-              directly underneath the input without affecting
-              the layout of the sections below it.
-            -->
             <div class="search-input-wrapper">
-              <input
-                type="text"
-                id="searchInput"
-                placeholder="Search by product ID or name..."
-                autocomplete="off"
-              />
-
-              <!--
-                Autocomplete suggestions.
-
-                This element is positioned as an overlay by CSS.
-              -->
-              <div
-                id="searchRecommendations"
-                class="search-recommendations"
-                hidden
-              ></div>
+              <input id="searchInput" type="text"
+                     placeholder="Nhập ID chính xác hoặc tiền tố tên sản phẩm..."
+                     autocomplete="off" />
+              <div id="searchRecommendations" class="search-recommendations"
+                   role="listbox" hidden></div>
             </div>
-
-            <button id="searchButton" type="button">Search</button>
+            <button id="searchButton" type="button">Tìm kiếm</button>
           </div>
+          <p id="searchMessage" class="form-message" aria-live="polite"></p>
         </section>
 
-        <!-- ========================================= -->
-        <!-- Retrieval Results -->
-        <!-- ========================================= -->
-
-        <section class="recent-operations-section">
+        <section class="recent-operations-section" aria-labelledby="priorityTitle">
           <div class="section-header">
             <div>
-              <h2>Retrieval Results</h2>
-
-              <p>Products retrieved by priority</p>
+              <h2 id="priorityTitle">Danh sách ưu tiên Min Heap</h2>
+              <p id="retrievalDescription">
+                Nhập tiền tố để xếp các sản phẩm AVAILABLE theo hạn dùng, thời gian nhập và ID.
+              </p>
             </div>
-
-            <span class="operation-count" id="retrievalCount">
-              0 products
-            </span>
+            <span class="operation-count" id="retrievalCount">0 sản phẩm</span>
           </div>
-
           <div class="recent-operations-container">
-            <table class="recent-operations-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Product ID</th>
-                  <th>Product Name</th>
-                  <th>Made Date</th>
-                  <th>Arrived Time</th>
-                  <th>Best By Date</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-
+            <table class="recent-operations-table priority-table">
+              <thead><tr>
+                <th>STT</th><th>ID</th><th>Tên sản phẩm</th><th>Ngày sản xuất</th>
+                <th>Thời gian nhập</th><th>Hạn dùng</th><th>Trạng thái</th><th>Thao tác</th>
+              </tr></thead>
               <tbody id="retrievalResults">
-                <tr>
-                  <td colspan="7" class="empty-state">No retrieval results.</td>
-                </tr>
+                <tr><td colspan="8" class="empty-state">Chưa thực hiện tìm kiếm.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
-        <!-- ========================================= -->
-        <!-- Recent Workspace -->
-        <!-- ========================================= -->
-
-        <section class="recent-operations-section">
+        <section class="add-product-section" aria-labelledby="managementTitle">
           <div class="section-header">
-            <div>
-              <h2>Recent Workspace</h2>
-
-              <p>Recently interacted products</p>
-            </div>
-
-            <span class="operation-count" id="operationCount">
-              0 products
-            </span>
+            <h2 id="managementTitle">Quản lý sản phẩm</h2>
+            <p>Thêm sản phẩm hoặc xóa vĩnh viễn theo ID. Chức năng xóa độc lập với Min Heap.</p>
           </div>
+          <div class="management-grid">
+            <form id="addProductForm" class="management-card">
+              <h3>Thêm sản phẩm</h3>
+              <label>Tên sản phẩm<input id="productName" required /></label>
+              <label>Ngày sản xuất<input id="madeDate" type="date" required /></label>
+              <label>Thời gian nhập<input id="arrivedTime" type="datetime-local" step="1" required /></label>
+              <label>Hạn dùng<input id="bestByDate" type="date" required /></label>
+              <label>Số lượng<input id="quantity" type="number" min="1" max="100" value="1" required /></label>
+              <button type="submit">Thêm vào kho</button>
+              <p id="addMessage" class="form-message" aria-live="polite"></p>
+            </form>
+            <form id="deleteProductForm" class="management-card danger-card">
+              <h3>Xóa sản phẩm khỏi HashTable</h3>
+              <p>Sản phẩm sẽ bị xóa khỏi HashTable, Trie và file CSV.</p>
+              <label>ID sản phẩm<input id="deleteProductId" placeholder="Ví dụ: P00001" required /></label>
+              <button type="submit" class="remove-product-button">Xóa vĩnh viễn</button>
+              <p id="deleteMessage" class="form-message" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
 
+        <section class="recent-operations-section" aria-labelledby="recentTitle">
+          <div class="section-header">
+            <div><h2 id="recentTitle">LRU Cache</h2><p>50 sản phẩm được thao tác gần đây nhất.</p></div>
+            <span class="operation-count" id="operationCount">0 sản phẩm</span>
+          </div>
           <div class="recent-operations-container">
             <table class="recent-operations-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Product ID</th>
-                  <th>Product Name</th>
-                  <th>Operation</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-
+              <thead><tr><th>STT</th><th>ID</th><th>Tên sản phẩm</th><th>Thao tác</th><th>Thời gian</th></tr></thead>
               <tbody id="recentOperations">
-                <tr>
-                  <td colspan="5" class="empty-state">
-                    Loading recent workspace...
-                  </td>
-                </tr>
+                <tr><td colspan="5" class="empty-state">Đang tải...</td></tr>
               </tbody>
             </table>
           </div>
@@ -141,393 +95,220 @@
       </main>
     </div>
 
-    <!-- ========================================= -->
-    <!-- JavaScript -->
-    <!-- ========================================= -->
-
     <script src="JavaScript/app.js"></script>
     <script src="JavaScript/api.js"></script>
-
     <script>
       loadHeader();
       loadNavbar();
 
-      // ============================================================
-      // CONFIGURATION
-      // ============================================================
-
-      const AUTOCOMPLETE_DEBOUNCE = 300;
-      const SEARCH_RESULT_POLLING = 1000;
-      const RECENT_WORKSPACE_POLLING = 2000;
-
-      // ============================================================
-      // DOM ELEMENTS
-      // ============================================================
-
       const searchInput = document.getElementById("searchInput");
-      const searchButton = document.getElementById("searchButton");
-      const recommendationBox = document.getElementById(
-        "searchRecommendations",
-      );
+      const recommendationBox = document.getElementById("searchRecommendations");
+      let currentQuery = "";
+      let debounceTimer = null;
 
-      // ============================================================
-      // DEBOUNCE
-      // ============================================================
-
-      function debounce(callback, delay) {
-        let timeoutId = null;
-
-        return (...args) => {
-          clearTimeout(timeoutId);
-
-          timeoutId = setTimeout(() => {
-            callback(...args);
-          }, delay);
-        };
+      function setMessage(elementId, message, isError = false) {
+        const element = document.getElementById(elementId);
+        element.textContent = message;
+        element.classList.toggle("error-message", isError);
       }
 
-      // ============================================================
-      // SEARCH INPUT
-      // ============================================================
+      function appendCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = String(value ?? "");
+        row.appendChild(cell);
+        return cell;
+      }
 
-      /*
-       * Sends the current search-bar content to:
-       *
-       * POST /search/input
-       *
-       * IMPORTANT:
-       * This is NOT called when the user types.
-       *
-       * It is only called when the user commits a search:
-       *
-       *     - Click Search
-       *     - Press Enter
-       *     - Select an autocomplete suggestion
-       */
-      async function updateSearchInput() {
+      function showEmpty(table, columns, message) {
+        table.replaceChildren();
+        const row = document.createElement("tr");
+        const cell = appendCell(row, message);
+        cell.colSpan = columns;
+        cell.className = "empty-state";
+        table.appendChild(row);
+      }
+
+      function renderProducts(response) {
+        const table = document.getElementById("retrievalResults");
+        const products = Array.isArray(response.results) ? response.results : [];
+        document.getElementById("retrievalCount").textContent = `${products.length} sản phẩm`;
+        document.getElementById("retrievalDescription").textContent =
+          response.mode === "exact"
+            ? "Kết quả tra cứu ID chính xác từ HashTable."
+            : "Sản phẩm AVAILABLE được Min Heap xếp theo hạn dùng, thời gian nhập và ID.";
+
+        if (products.length === 0) {
+          showEmpty(table, 8, "Không tìm thấy sản phẩm phù hợp.");
+          return;
+        }
+        table.replaceChildren();
+        products.forEach((product, index) => {
+          const row = document.createElement("tr");
+          appendCell(row, index + 1);
+          appendCell(row, product.id);
+          appendCell(row, product.product_name);
+          appendCell(row, product.made_date);
+          appendCell(row, product.arrived_time);
+          appendCell(row, product.best_by_date);
+          appendCell(row, product.status);
+          const action = appendCell(row, "");
+          if (response.mode === "priority" && product.status === "AVAILABLE") {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "reserve-product-button";
+            button.textContent = "Chuẩn bị đơn hàng";
+            button.dataset.productId = product.id;
+            action.appendChild(button);
+          } else {
+            action.textContent = "—";
+          }
+          table.appendChild(row);
+        });
+      }
+
+      async function runSearch(query = searchInput.value) {
+        currentQuery = query.trim();
+        if (!currentQuery) {
+          setMessage("searchMessage", "Vui lòng nhập ID hoặc tiền tố tên sản phẩm.", true);
+          return;
+        }
+        setMessage("searchMessage", "Đang tìm kiếm...");
         try {
-          await postText("/search/input", searchInput.value);
+          const response = await getData(`/search/result?query=${encodeURIComponent(currentQuery)}`);
+          renderProducts(response);
+          setMessage("searchMessage", "Đã cập nhật kết quả.");
         } catch (error) {
-          console.error("Search input error:", error);
+          document.getElementById("retrievalCount").textContent = "0 sản phẩm";
+          showEmpty(document.getElementById("retrievalResults"), 8, error.message);
+          setMessage("searchMessage", error.message, true);
         }
       }
 
-      // ============================================================
-      // AUTOCOMPLETE
-      // ============================================================
-
-      /*
-       * Requests:
-       *
-       * GET /search/autocomplete?prefix=...
-       *
-       * This is the only operation triggered while typing.
-       *
-       * The request is debounced so that typing quickly does not
-       * generate a request for every single keystroke.
-       */
-      async function loadSearchRecommendations(prefix) {
+      async function loadRecommendations(prefix) {
+        recommendationBox.replaceChildren();
         if (!prefix.trim()) {
-          recommendationBox.innerHTML = "";
           recommendationBox.hidden = true;
           return;
         }
-
         try {
-          const encodedPrefix = encodeURIComponent(prefix);
-
-          const suggestions = await getData(
-            `/search/autocomplete?prefix=${encodedPrefix}`,
-          );
-
-          if (!Array.isArray(suggestions) || suggestions.length === 0) {
-            recommendationBox.innerHTML = "";
-            recommendationBox.hidden = true;
-            return;
-          }
-
-          recommendationBox.innerHTML = suggestions
-            .map(
-              (suggestion) => `
-          <div
-            class="search-recommendation"
-            data-value="${suggestion}"
-            role="option"
-          >
-            ${suggestion}
-          </div>
-        `,
-            )
-            .join("");
-
-          recommendationBox.hidden = false;
+          const suggestions = await getData(`/search/autocomplete?prefix=${encodeURIComponent(prefix)}`);
+          suggestions.forEach((suggestion) => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.className = "search-recommendation";
+            option.textContent = suggestion;
+            option.dataset.value = suggestion;
+            recommendationBox.appendChild(option);
+          });
+          recommendationBox.hidden = suggestions.length === 0;
         } catch (error) {
-          console.error("Autocomplete error:", error);
-
-          recommendationBox.innerHTML = "";
           recommendationBox.hidden = true;
         }
       }
-
-      const debouncedAutocomplete = debounce(
-        loadSearchRecommendations,
-        AUTOCOMPLETE_DEBOUNCE,
-      );
-
-      // ============================================================
-      // SEARCH RESULT
-      // ============================================================
-
-      /*
-       * Requests:
-       *
-       * GET /search/result
-       *
-       * The server decides whether a new search needs to be
-       * performed.
-       *
-       * The frontend only displays the returned result.
-       */
-      async function loadSearchResult() {
-        const table = document.getElementById("retrievalResults");
-        const count = document.getElementById("retrievalCount");
-
-        try {
-          const response = await getData("/search/result");
-
-          const products = Array.isArray(response.results)
-            ? response.results
-            : [];
-
-          count.textContent = `${products.length} product${
-            products.length !== 1 ? "s" : ""
-          }`;
-
-          if (products.length === 0) {
-            table.innerHTML = `
-        <tr>
-          <td colspan="7" class="empty-state">
-            No products found.
-          </td>
-        </tr>
-      `;
-            return;
-          }
-
-          table.innerHTML = products
-            .map(
-              (product, index) => `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${product.id}</td>
-            <td>${product.product_name}</td>
-            <td>${product.made_date}</td>
-            <td>${product.arrived_time}</td>
-            <td>${product.best_by_date}</td>
-            <td>${product.status}</td>
-          </tr>
-        `,
-            )
-            .join("");
-        } catch (error) {
-          console.error("Search result error:", error);
-
-          count.textContent = "0 products";
-
-          table.innerHTML = `
-      <tr>
-        <td colspan="7" class="empty-state">
-          Failed to load search results.
-        </td>
-      </tr>
-    `;
-        }
-      }
-
-      // ============================================================
-      // RECENT WORKSPACE
-      // ============================================================
 
       async function loadRecentWorkspace() {
         const table = document.getElementById("recentOperations");
-        const count = document.getElementById("operationCount");
-
         try {
           const items = await getData("/product/recent");
-
-          const recentItems = Array.isArray(items) ? items : [];
-
-          count.textContent = `${recentItems.length} product${
-            recentItems.length !== 1 ? "s" : ""
-          }`;
-
-          if (recentItems.length === 0) {
-            table.innerHTML = `
-        <tr>
-          <td colspan="5" class="empty-state">
-            No recent workspace activity.
-          </td>
-        </tr>
-      `;
+          document.getElementById("operationCount").textContent = `${items.length} sản phẩm`;
+          if (items.length === 0) {
+            showEmpty(table, 5, "Chưa có thao tác gần đây.");
             return;
           }
-
-          table.innerHTML = recentItems
-            .map((item, index) => {
-              const product = item.product;
-
-              return `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${product.id}</td>
-            <td>${product.product_name}</td>
-            <td>${item.operation}</td>
-            <td>${item.time}</td>
-          </tr>
-        `;
-            })
-            .join("");
+          table.replaceChildren();
+          items.forEach((item, index) => {
+            const row = document.createElement("tr");
+            appendCell(row, index + 1);
+            appendCell(row, item.product.id);
+            appendCell(row, item.product.product_name);
+            appendCell(row, item.operation);
+            appendCell(row, item.time);
+            table.appendChild(row);
+          });
         } catch (error) {
-          console.error("Recent workspace error:", error);
-
-          count.textContent = "0 products";
-
-          table.innerHTML = `
-      <tr>
-        <td colspan="5" class="empty-state">
-          Failed to load recent workspace.
-        </td>
-      </tr>
-    `;
+          showEmpty(table, 5, "Không tải được LRU Cache.");
         }
       }
 
-      // ============================================================
-      // SEARCH BUTTON
-      // ============================================================
-
-      /*
-       * Clicking Search commits the current query.
-       *
-       * Flow:
-       *
-       *     Search button
-       *          ↓
-       *     POST /search/input
-       *          ↓
-       *     currentSearchQuery updated on server
-       *          ↓
-       *     GET /search/result
-       *          ↓
-       *     performSearch()
-       */
-      searchButton.addEventListener("click", async () => {
-        await updateSearchInput();
-
-        recommendationBox.innerHTML = "";
-        recommendationBox.hidden = true;
+      document.getElementById("searchButton").addEventListener("click", () => runSearch());
+      searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          recommendationBox.hidden = true;
+          runSearch();
+        }
       });
-
-      // ============================================================
-      // SEARCH INPUT EVENTS
-      // ============================================================
-
-      /*
-       * Typing does NOT update /search/input anymore.
-       *
-       * It only requests autocomplete suggestions.
-       */
       searchInput.addEventListener("input", () => {
-        const prefix = searchInput.value;
-
-        debouncedAutocomplete(prefix);
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => loadRecommendations(searchInput.value), 300);
+      });
+      recommendationBox.addEventListener("click", (event) => {
+        const option = event.target.closest(".search-recommendation");
+        if (!option) return;
+        searchInput.value = option.dataset.value;
+        recommendationBox.hidden = true;
+        runSearch(option.dataset.value);
       });
 
-      // ============================================================
-      // ENTER KEY
-      // ============================================================
-
-      /*
-       * Pressing Enter commits the search immediately.
-       *
-       * It does NOT wait for the autocomplete debounce.
-       */
-      searchInput.addEventListener("keydown", async (event) => {
-        if (event.key !== "Enter") {
-          return;
+      document.getElementById("retrievalResults").addEventListener("click", async (event) => {
+        const button = event.target.closest(".reserve-product-button");
+        if (!button) return;
+        button.disabled = true;
+        button.textContent = "Đang xử lý...";
+        try {
+          await reserveProduct(button.dataset.productId);
+          setMessage("searchMessage", `${button.dataset.productId} đã chuyển sang RESERVED.`);
+          await Promise.all([runSearch(currentQuery), loadRecentWorkspace()]);
+        } catch (error) {
+          setMessage("searchMessage", error.message, true);
+          button.disabled = false;
+          button.textContent = "Chuẩn bị đơn hàng";
         }
+      });
 
+      document.getElementById("addProductForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-
-        await updateSearchInput();
-
-        recommendationBox.innerHTML = "";
-        recommendationBox.hidden = true;
-      });
-
-      // ============================================================
-      // AUTOCOMPLETE SELECTION
-      // ============================================================
-
-      /*
-       * Clicking a suggestion:
-       *
-       *     1. Put the selected value into the input.
-       *     2. Hide suggestions.
-       *     3. Commit the search.
-       */
-      recommendationBox.addEventListener("click", async (event) => {
-        const recommendation = event.target.closest(".search-recommendation");
-
-        if (!recommendation) {
-          return;
+        try {
+          const rawArrivedTime = document.getElementById("arrivedTime").value;
+          const arrivedTime = `${rawArrivedTime.replace("T", " ")}${
+            rawArrivedTime.length === 16 ? ":00" : ""
+          }`;
+          const response = await addProduct({
+            product_name: document.getElementById("productName").value,
+            made_date: document.getElementById("madeDate").value,
+            arrived_time: arrivedTime,
+            best_by_date: document.getElementById("bestByDate").value,
+            quantity: Number(document.getElementById("quantity").value),
+          });
+          setMessage("addMessage", `Đã thêm ${response.products.length} sản phẩm.`);
+          event.target.reset();
+          document.getElementById("quantity").value = "1";
+          await loadRecentWorkspace();
+        } catch (error) {
+          setMessage("addMessage", error.message, true);
         }
-
-        const value = recommendation.dataset.value;
-
-        searchInput.value = value;
-
-        recommendationBox.innerHTML = "";
-        recommendationBox.hidden = true;
-
-        await updateSearchInput();
       });
 
-      // ============================================================
-      // CLOSE AUTOCOMPLETE
-      // ============================================================
+      document.getElementById("deleteProductForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = document.getElementById("deleteProductId");
+        try {
+          await removeProduct(input.value.trim());
+          setMessage("deleteMessage", `${input.value.trim()} đã được xóa vĩnh viễn.`);
+          input.value = "";
+          if (currentQuery) await runSearch(currentQuery);
+          await loadRecentWorkspace();
+        } catch (error) {
+          setMessage("deleteMessage", error.message, true);
+        }
+      });
 
       document.addEventListener("click", (event) => {
-        const searchSection = document.querySelector(".search-section");
-
-        if (searchSection && !searchSection.contains(event.target)) {
-          recommendationBox.innerHTML = "";
-          recommendationBox.hidden = true;
-        }
+        if (!event.target.closest(".search-input-wrapper")) recommendationBox.hidden = true;
       });
 
-      // ============================================================
-      // INITIAL LOAD
-      // ============================================================
-
       loadRecentWorkspace();
-      loadSearchResult();
-
-      // ============================================================
-      // POLLING
-      // ============================================================
-
-      /*
-       * Search result:
-       * poll every 1 second.
-       */
-      setInterval(loadSearchResult, SEARCH_RESULT_POLLING);
-
-      /*
-       * Recent workspace:
-       * poll every 2 seconds.
-       */
-      setInterval(loadRecentWorkspace, RECENT_WORKSPACE_POLLING);
+      setInterval(loadRecentWorkspace, 2000);
     </script>
   </body>
 </html>
