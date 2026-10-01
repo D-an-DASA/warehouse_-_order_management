@@ -25,3 +25,7 @@ TestResults.xml
 # C++ build output
 *.exe
 build/
+runtime/
+node_modules/
+playwright-report/
+test-results/
