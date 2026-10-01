@@ -9,9 +9,11 @@
 #endif
 
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <mutex>
+#include <memory>
 
 #include "src/httplib.h"
 #include "src/json.hpp"
@@ -31,11 +33,24 @@ using json = nlohmann::json;
 // Current text inside the user's search box.
 string currentSearchQuery;
 
-// The query that was used to generate currentSearchResult.
+// The query that was used to generate currentProductResult.
 string lastProcessedQuery;
 
 // Current search result.
-json currentSearchResult = json::array();
+vector<Product> currentProductResult;
+// ============================================================
+// WEBSOCKET CLIENTS
+// ============================================================
+
+// Store connected WebSocket clients.
+//
+vector<ws::WebSocket *> websocketClients;
+
+mutex websocketMutex;
+
+// ============================================================
+// JSON
+// ============================================================
 
 json productToJson(const Product &product)
 {
@@ -47,6 +62,10 @@ json productToJson(const Product &product)
         {"best_by_date", product.best_by_date},
         {"status", product.status}};
 }
+
+// ============================================================
+// SEARCH STATE MUTEX
+// ============================================================
 
 // Protect shared search state because HTTP handlers
 // may be executed concurrently.
@@ -84,9 +103,156 @@ void setupCORS(Server &server)
 }
 
 // ============================================================
+// WEBSOCKET BROADCAST
+// ============================================================
+
+void broadcastSearchResult()
+{
+    json response;
+
+    {
+        lock_guard<mutex> lock(searchMutex);
+
+        response = {
+            {"type", "search_result"},
+            {"query", currentSearchQuery},
+            {"results", json::array()}};
+
+        for (const Product &product : currentProductResult)
+        {
+            response["results"].push_back(
+                productToJson(product));
+        }
+    }
+
+    const string message = response.dump();
+
+    lock_guard<mutex> lock(websocketMutex);
+
+    cout << "[WebSocket] Broadcasting search result to "
+         << websocketClients.size()
+         << " client(s)\n";
+
+    for (auto client = websocketClients.begin();
+         client != websocketClients.end();)
+    {
+        if (*client == nullptr || !(*client)->send(message))
+        {
+            client = websocketClients.erase(client);
+        }
+        else
+        {
+            ++client;
+        }
+    }
+}
+
+void broadcastRecentProducts()
+{
+    json response = {
+        {"type", "recent_products"},
+        {"items", json::array()}};
+
+    {
+        lock_guard<mutex> lock(searchMutex);
+
+        for (const CacheItem &item : searchCore.getRecent())
+        {
+            response["items"].push_back(
+                {{"product", productToJson(item.product)},
+                 {"time", item.time},
+                 {"operation", item.operation}});
+        }
+    }
+
+    const string message = response.dump();
+
+    lock_guard<mutex> lock(websocketMutex);
+
+    cout << "[WebSocket] Broadcasting recent products to "
+         << websocketClients.size()
+         << " client(s)\n";
+
+    for (auto client = websocketClients.begin();
+         client != websocketClients.end();)
+    {
+        if (*client == nullptr || !(*client)->send(message))
+        {
+            client = websocketClients.erase(client);
+        }
+        else
+        {
+            ++client;
+        }
+    }
+}
+
+// ============================================================
+// WEBSOCKET ENDPOINT
+// ============================================================
+
+void setupWebSocketEndpoint(Server &server)
+{
+    server.WebSocket(
+        "/ws",
+        [](const Request &, ws::WebSocket &socket)
+        {
+            cout << "[WebSocket] Client connected\n";
+
+            {
+                lock_guard<mutex> lock(websocketMutex);
+                websocketClients.push_back(&socket);
+                cout << "[WebSocket] Connected clients: "
+                     << websocketClients.size()
+                     << '\n';
+            }
+
+            broadcastRecentProducts();
+
+            string message;
+            while (socket.is_open())
+            {
+                const ws::ReadResult result = socket.read(message);
+                if (result == ws::Fail)
+                {
+                    break;
+                }
+
+                if (result == ws::Text || result == ws::Binary)
+                {
+                    cout << "[WebSocket] Message received: "
+                         << message
+                         << '\n';
+                }
+            }
+
+            cout << "[WebSocket] Client disconnected\n";
+
+            {
+                lock_guard<mutex> lock(websocketMutex);
+                websocketClients.erase(
+                    remove(
+                        websocketClients.begin(),
+                        websocketClients.end(),
+                        &socket),
+                    websocketClients.end());
+                cout << "[WebSocket] Connected clients: "
+                     << websocketClients.size()
+                     << '\n';
+            }
+        });
+}
+
+// ============================================================
 // POST /product/add
-// Request JSON: product_name, made_date, arrived_time, best_by_date, quantity.
-// quantity controls how many products are created; it is not stored in Product.
+// Request JSON:
+// product_name,
+// made_date,
+// arrived_time,
+// best_by_date,
+// quantity.
+//
+// quantity controls how many products are created.
 // ============================================================
 
 void setupAddProductEndpoint(Server &server)
@@ -96,9 +262,12 @@ void setupAddProductEndpoint(Server &server)
         [](const Request &req, Response &res)
         {
             cout << "[API] POST /product/add called\n"
-                 << "[API] Request body: " << req.body << '\n';
+                 << "[API] Request body: "
+                 << req.body
+                 << '\n';
 
             json payload;
+
             try
             {
                 payload = json::parse(req.body);
@@ -106,58 +275,114 @@ void setupAddProductEndpoint(Server &server)
             catch (const json::parse_error &)
             {
                 res.status = 400;
-                res.set_content(json{{"success", false}, {"message", "Invalid JSON body."}}.dump(), "application/json");
+
+                res.set_content(
+                    json{
+                        {"success", false},
+                        {"message", "Invalid JSON body."}}
+                        .dump(),
+                    "application/json");
+
                 return;
             }
 
             if (!payload.is_object() ||
-                !payload.contains("product_name") || !payload["product_name"].is_string() ||
-                !payload.contains("made_date") || !payload["made_date"].is_string() ||
-                !payload.contains("arrived_time") || !payload["arrived_time"].is_string() ||
-                !payload.contains("best_by_date") || !payload["best_by_date"].is_string() ||
-                !payload.contains("quantity") || !payload["quantity"].is_number_integer() ||
+                !payload.contains("product_name") ||
+                !payload["product_name"].is_string() ||
+                !payload.contains("made_date") ||
+                !payload["made_date"].is_string() ||
+                !payload.contains("arrived_time") ||
+                !payload["arrived_time"].is_string() ||
+                !payload.contains("best_by_date") ||
+                !payload["best_by_date"].is_string() ||
+                !payload.contains("quantity") ||
+                !payload["quantity"].is_number_integer() ||
                 payload["quantity"].get<int>() < 1)
             {
                 res.status = 400;
-                res.set_content(json{{"success", false}, {"message", "Product fields are missing or invalid."}}.dump(), "application/json");
+
+                res.set_content(
+                    json{
+                        {"success", false},
+                        {"message",
+                         "Product fields are missing or invalid."}}
+                        .dump(),
+                    "application/json");
+
                 return;
             }
 
-            const int quantity = payload["quantity"].get<int>();
+            const int quantity =
+                payload["quantity"].get<int>();
+
             json createdProducts = json::array();
 
-            lock_guard<mutex> lock(searchMutex);
-            for (int i = 0; i < quantity; i++)
             {
-                Product product;
-                product.product_name = payload["product_name"].get<string>();
-                product.made_date = payload["made_date"].get<string>();
-                product.arrived_time = payload["arrived_time"].get<string>();
-                product.best_by_date = payload["best_by_date"].get<string>();
-                product.status = "AVAILABLE";
+                lock_guard<mutex> lock(searchMutex);
 
-                if (!searchCore.addProduct(product))
+                for (int i = 0; i < quantity; i++)
                 {
-                    res.status = 500;
-                    res.set_content(json{{"success", false}, {"message", "Could not generate a unique product ID."}}.dump(), "application/json");
-                    return;
+                    Product product;
+
+                    product.product_name =
+                        payload["product_name"].get<string>();
+
+                    product.made_date =
+                        payload["made_date"].get<string>();
+
+                    product.arrived_time =
+                        payload["arrived_time"].get<string>();
+
+                    product.best_by_date =
+                        payload["best_by_date"].get<string>();
+
+                    product.status = "AVAILABLE";
+
+                    if (!searchCore.addProduct(product))
+                    {
+                        res.status = 500;
+
+                        res.set_content(
+                            json{
+                                {"success", false},
+                                {"message",
+                                 "Could not generate a unique product ID."}}
+                                .dump(),
+                            "application/json");
+
+                        return;
+                    }
+
+                    createdProducts.push_back(
+                        productToJson(product));
                 }
 
-                createdProducts.push_back(productToJson(product));
+                currentProductResult =
+                    searchCore.search(currentSearchQuery);
             }
 
             res.status = 201;
+
             res.set_content(
-                json{{"success", true}, {"products", createdProducts}}.dump(),
+                json{
+                    {"success", true},
+                    {"products", createdProducts}}
+                    .dump(),
                 "application/json");
 
-            cout << "[API] Added " << quantity << " products\n";
+            cout << "[API] Added "
+                 << quantity
+                 << " products\n";
+
+            broadcastSearchResult();
+            broadcastRecentProducts();
         });
 }
 
 // ============================================================
 // DELETE /product/delete
-// Request JSON: { "id": "<product-id>" }
+// Request JSON:
+// { "id": "<product-id>" }
 // ============================================================
 
 void setupDeleteProductEndpoint(Server &server)
@@ -167,9 +392,12 @@ void setupDeleteProductEndpoint(Server &server)
         [](const Request &req, Response &res)
         {
             cout << "[API] DELETE /product/delete called\n"
-                 << "[API] Request body: " << req.body << '\n';
+                 << "[API] Request body: "
+                 << req.body
+                 << '\n';
 
             json payload;
+
             try
             {
                 payload = json::parse(req.body);
@@ -177,81 +405,110 @@ void setupDeleteProductEndpoint(Server &server)
             catch (const json::parse_error &)
             {
                 res.status = 400;
-                res.set_content(json{{"success", false}, {"message", "Invalid JSON body."}}.dump(), "application/json");
+
+                res.set_content(
+                    json{
+                        {"success", false},
+                        {"message", "Invalid JSON body."}}
+                        .dump(),
+                    "application/json");
+
                 return;
             }
 
-            if (!payload.is_object() || !payload.contains("id") || !payload["id"].is_string())
+            if (!payload.is_object() ||
+                !payload.contains("id") ||
+                !payload["id"].is_string())
             {
                 res.status = 400;
-                res.set_content(json{{"success", false}, {"message", "A product id is required."}}.dump(), "application/json");
+
+                res.set_content(
+                    json{
+                        {"success", false},
+                        {"message",
+                         "A product id is required."}}
+                        .dump(),
+                    "application/json");
+
                 return;
             }
 
-            const string productId = payload["id"].get<string>();
-            lock_guard<mutex> lock(searchMutex);
+            const string productId =
+                payload["id"].get<string>();
 
-            if (!searchCore.deleteProduct(productId))
             {
-                res.status = 404;
-                res.set_content(json{{"success", false}, {"message", "Product not found."}}.dump(), "application/json");
-                return;
-            }
+                lock_guard<mutex> lock(searchMutex);
 
-            if (currentSearchQuery == productId)
-            {
-                lastProcessedQuery.clear();
-                currentSearchResult = json::array();
+                if (!searchCore.deleteProduct(productId))
+                {
+                    res.status = 404;
+
+                    res.set_content(
+                        json{
+                            {"success", false},
+                            {"message",
+                             "Product not found."}}
+                            .dump(),
+                        "application/json");
+
+                    return;
+                }
+
+                // Keep current search result updated.
+                currentProductResult = searchCore.search(currentSearchQuery);
             }
 
             res.set_content(
-                json{{"success", true}, {"id", productId}}.dump(),
+                json{
+                    {"success", true},
+                    {"id", productId}}
+                    .dump(),
                 "application/json");
 
-            cout << "[API] Deleted product " << productId << '\n';
-        });
-}
+            cout << "[API] Deleted product "
+                 << productId
+                 << '\n';
 
-// ============================================================
-// GET /product/recent
-// ============================================================
-//
-// Frontend polls this endpoint periodically.
-//
-// The actual LRU cache will be connected here later.
-//
-// ============================================================
+            // ------------------------------------------------
+            // NEW:
+            // Notify connected clients.
+            // ------------------------------------------------
 
-void setupRecentProductEndpoint(Server &server)
-{
-    server.Get(
-        "/product/recent",
-        [](const Request &, Response &res)
-        {
-            cout << "[API] GET /product/recent\n";
-            lock_guard<mutex> lock(searchMutex);
-
-            json response = json::array();
-            for (const CacheItem &item : searchCore.getRecent())
-            {
-                json recent = productToJson(item.product);
-                recent["time"] = item.time;
-                recent["operation"] = item.operation;
-                response.push_back(move(recent));
-            }
-            res.set_content(
-                response.dump(),
-                "application/json");
+            broadcastSearchResult();
+            broadcastRecentProducts();
         });
 }
 
 // ============================================================
 // POST /search/input
-// ============================================================
 //
-// This endpoint receives the search query after the user
-// commits a search.
+// This endpoint receives the search query.
 //
+// BEFORE:
+//
+// POST /search/input
+//       |
+//       v
+// searchCore.search()
+//       |
+//       v
+// currentProductResult
+//       |
+//       v
+// frontend POLLS /search/result
+//
+// NOW:
+//
+// POST /search/input
+//       |
+//       v
+// searchCore.search()
+//       |
+//       v
+// currentProductResult
+//       |
+//       v
+// WebSocket broadcast
 // ============================================================
 
 void setupSearchInputEndpoint(Server &server)
@@ -260,30 +517,54 @@ void setupSearchInputEndpoint(Server &server)
         "/search/input",
         [](const Request &req, Response &res)
         {
-            lock_guard<mutex> lock(searchMutex);
+            bool resultChanged = false;
 
-            currentSearchQuery = req.body;
+            {
+                lock_guard<mutex> lock(searchMutex);
 
-            cout
-                << "[API] POST /search/input"
-                << " | query: " << currentSearchQuery
-                << "\n";
+                currentSearchQuery = req.body;
 
-            // No response body.
+                cout << "[API] POST /search/input"
+                     << " | query: "
+                     << currentSearchQuery
+                     << "\n";
+
+                // Has the search query changed?
+                if (currentSearchQuery !=
+                    lastProcessedQuery)
+                {
+                    cout << "[SEARCH] New search query: "
+                         << currentSearchQuery
+                         << "\n";
+
+                    currentProductResult =
+                        searchCore.search(
+                            currentSearchQuery);
+
+                    lastProcessedQuery =
+                        currentSearchQuery;
+
+                    resultChanged = true;
+                }
+            }
+
+            // ------------------------------------------------
+            // NEW:
+            // Push the result immediately.
+            // ------------------------------------------------
+
+            if (resultChanged)
+            {
+                broadcastSearchResult();
+                broadcastRecentProducts();
+            }
+
             res.status = 204;
         });
 }
 
 // ============================================================
 // GET /search/autocomplete
-// ============================================================
-//
-// Example:
-//
-//     GET /search/autocomplete?prefix=lap
-//
-// This endpoint returns autocomplete suggestions.
-//
 // ============================================================
 
 void setupAutocompleteEndpoint(Server &server)
@@ -311,76 +592,19 @@ void setupAutocompleteEndpoint(Server &server)
                 return;
             }
 
-            string prefix = req.get_param_value("prefix");
+            string prefix =
+                req.get_param_value("prefix");
 
             cout
                 << "[API] GET /search/autocomplete"
-                << " | prefix: " << prefix
+                << " | prefix: "
+                << prefix
                 << "\n";
 
             lock_guard<mutex> lock(searchMutex);
-            json response = searchCore.autocomplete(prefix);
 
-            res.set_content(
-                response.dump(),
-                "application/json");
-        });
-}
-
-// ============================================================
-// GET /search/result
-// ============================================================
-//
-// Frontend polls this endpoint periodically.
-//
-// The server checks:
-//
-//     currentSearchQuery
-//
-//         vs
-//
-//     lastProcessedQuery
-//
-// ============================================================
-
-void setupSearchResultEndpoint(Server &server)
-{
-    server.Get(
-        "/search/result",
-        [](const Request &, Response &res)
-        {
-            lock_guard<mutex> lock(searchMutex);
-
-            cout << "[API] GET /search/result\n";
-
-            // ------------------------------------------------
-            // Has the user entered something new?
-            // ------------------------------------------------
-
-            if (currentSearchQuery != lastProcessedQuery)
-            {
-                cout
-                    << "[SEARCH] New search query: "
-                    << currentSearchQuery
-                    << "\n";
-
-                currentSearchResult = json::array();
-                for (const Product &product : searchCore.search(currentSearchQuery))
-                {
-                    currentSearchResult.push_back(productToJson(product));
-                }
-
-                lastProcessedQuery =
-                    currentSearchQuery;
-            }
-
-            // ------------------------------------------------
-            // Return the current result.
-            // ------------------------------------------------
-
-            json response = {
-                {"query", currentSearchQuery},
-                {"results", currentSearchResult}};
+            json response =
+                searchCore.autocomplete(prefix);
 
             res.set_content(
                 response.dump(),
@@ -394,7 +618,8 @@ void setupSearchResultEndpoint(Server &server)
 
 int main()
 {
-    if (!searchCore.loadCSV("cpp/product_inventory_100 000.csv"))
+    if (!searchCore.loadCSV(
+            "cpp/product_inventory_100 000.csv"))
     {
         return 1;
     }
@@ -408,15 +633,20 @@ int main()
     setupCORS(server);
 
     // --------------------------------------------------------
-    // Endpoints
+    // WebSocket
     // --------------------------------------------------------
 
-    setupRecentProductEndpoint(server);
+    setupWebSocketEndpoint(server);
+
+    // --------------------------------------------------------
+    // REST API
+    // --------------------------------------------------------
+
     setupAddProductEndpoint(server);
     setupDeleteProductEndpoint(server);
+
     setupSearchInputEndpoint(server);
     setupAutocompleteEndpoint(server);
-    setupSearchResultEndpoint(server);
 
     // --------------------------------------------------------
     // Server information
@@ -427,14 +657,16 @@ int main()
         << "DASA Server\n"
         << "========================================\n"
         << "Server: http://localhost:8081\n"
+        << "WebSocket: ws://localhost:8081/ws\n"
         << "\n"
         << "Endpoints:\n"
-        << "GET  /product/recent\n"
         << "POST /product/add\n"
         << "DELETE /product/delete\n"
         << "POST /search/input\n"
         << "GET  /search/autocomplete?prefix=<prefix>\n"
-        << "GET  /search/result\n"
+        << "\n"
+        << "WebSocket:\n"
+        << "ws://localhost:8081/ws\n"
         << "========================================\n";
 
     // --------------------------------------------------------
