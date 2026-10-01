@@ -450,7 +450,7 @@ int main()
         << "========================================\n"
         << "DASA Mock Server\n"
         << "========================================\n"
-        << "Server: http://localhost:8080\n"
+        << "Server: http://localhost:8081\n"
         << "\n"
         << "Endpoints:\n"
         << "GET  /product/recent\n"
@@ -465,7 +465,7 @@ int main()
     // Start server
     // --------------------------------------------------------
 
-    if (!server.listen("localhost", 8080))
+    if (!server.listen("localhost", 8081))
     {
         cerr << "Failed to start server.\n";
         return 1;
