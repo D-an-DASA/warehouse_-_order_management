@@ -1,3 +1,13 @@
+#ifdef _WIN32
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
+
+#ifndef WINVER
+#define WINVER _WIN32_WINNT
+#endif
+#endif
+
 #include <iostream>
 #include <string>
 #include <vector>
