@@ -1,3 +1,13 @@
+#ifdef _WIN32
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
+
+#ifndef WINVER
+#define WINVER _WIN32_WINNT
+#endif
+#endif
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -416,7 +426,7 @@ int main()
         << "========================================\n"
         << "DASA Server\n"
         << "========================================\n"
-        << "Server: http://localhost:8080\n"
+        << "Server: http://localhost:8081\n"
         << "\n"
         << "Endpoints:\n"
         << "GET  /product/recent\n"
@@ -431,7 +441,7 @@ int main()
     // Start server
     // --------------------------------------------------------
 
-    if (!server.listen("localhost", 8080))
+    if (!server.listen("localhost", 8081))
     {
         cerr << "Failed to start server.\n";
         return 1;
