@@ -129,9 +129,7 @@ void broadcastSearchResult()
 
     lock_guard<mutex> lock(websocketMutex);
 
-    cout << "[WebSocket] Broadcasting search result to "
-         << websocketClients.size()
-         << " client(s)\n";
+    cout << "[WebSocket] Broadcasting search result\n";
 
     for (auto client = websocketClients.begin();
          client != websocketClients.end();)
@@ -169,9 +167,7 @@ void broadcastRecentProducts()
 
     lock_guard<mutex> lock(websocketMutex);
 
-    cout << "[WebSocket] Broadcasting recent products to "
-         << websocketClients.size()
-         << " client(s)\n";
+    cout << "[WebSocket] Broadcasting recent products\n";
 
     for (auto client = websocketClients.begin();
          client != websocketClients.end();)
@@ -660,6 +656,7 @@ int main()
         << "WebSocket: ws://localhost:8081/ws\n"
         << "\n"
         << "Endpoints:\n"
+        << "WebSocket: BroadcastRecentProducts & BroadcastSearchResult\n"
         << "POST /product/add\n"
         << "DELETE /product/delete\n"
         << "POST /search/input\n"
