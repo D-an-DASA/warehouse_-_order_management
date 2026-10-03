@@ -265,8 +265,7 @@
       // ============================================================
 
       const AUTOCOMPLETE_DEBOUNCE = 300;
-      const SEARCH_RESULT_POLLING = 1000;
-      const RECENT_WORKSPACE_POLLING = 2000;
+      const WEBSOCKET_RECONNECT_DELAY = 1000;
 
       // ============================================================
       // DOM ELEMENTS
@@ -277,6 +276,8 @@
       const recommendationBox = document.getElementById(
         "searchRecommendations",
       );
+      let searchSocket = null;
+      let pendingSearchQuery = null;
 
       // ============================================================
       // DEBOUNCE
@@ -313,6 +314,11 @@
        *     - Select an autocomplete suggestion
        */
       async function updateSearchInput() {
+        if (!searchSocket || searchSocket.readyState !== WebSocket.OPEN) {
+          pendingSearchQuery = searchInput.value;
+          return;
+        }
+
         try {
           await postText("/search/input", searchInput.value);
         } catch (error) {
@@ -386,79 +392,108 @@
       // SEARCH RESULT
       // ============================================================
 
-      /*
-       * Requests:
-       *
-       * GET /search/result
-       *
-       * The server decides whether a new search needs to be
-       * performed.
-       *
-       * The frontend only displays the returned result.
-       */
-      async function loadSearchResult() {
+      function renderSearchResult(response) {
         const table = document.getElementById("retrievalResults");
         const count = document.getElementById("retrievalCount");
+        const products = Array.isArray(response.results)
+          ? response.results
+          : [];
 
-        try {
-          const response = await getData("/search/result");
+        count.textContent = `${products.length} product${
+          products.length !== 1 ? "s" : ""
+        }`;
 
-          const products = Array.isArray(response.results)
-            ? response.results
-            : [];
-
-          count.textContent = `${products.length} product${
-            products.length !== 1 ? "s" : ""
-          }`;
-
-          if (products.length === 0) {
-            table.innerHTML = `
+        if (products.length === 0) {
+          table.innerHTML = `
         <tr>
-          <td colspan="7" class="empty-state">
+          <td colspan="8" class="empty-state">
             No products found.
           </td>
         </tr>
       `;
-            return;
-          }
+          return;
+        }
 
-          table.innerHTML = products
-            .map(
-              (product, index) => `
+        table.innerHTML = products
+          .map(
+            (product, index) => `
           <tr>
             <td>${index + 1}</td>
-            <td>${product.id}</td>
-            <td>${product.product_name}</td>
-            <td>${product.made_date}</td>
-            <td>${product.arrived_time}</td>
-            <td>${product.best_by_date}</td>
-            <td>${product.status}</td>
+            <td>${escapeHtml(product.id)}</td>
+            <td>${escapeHtml(product.product_name)}</td>
+            <td>${escapeHtml(product.made_date)}</td>
+            <td>${escapeHtml(product.arrived_time)}</td>
+            <td>${escapeHtml(product.best_by_date)}</td>
+            <td>${escapeHtml(product.status)}</td>
             <td>
               <button
                 type="button"
                 class="remove-product-button"
-                data-product-id="${product.id}"
+                data-product-id="${escapeHtml(product.id)}"
               >
                 Remove
               </button>
             </td>
           </tr>
         `,
-            )
-            .join("");
-        } catch (error) {
-          console.error("Search result error:", error);
+          )
+          .join("");
+      }
 
-          count.textContent = "0 products";
+      function escapeHtml(value) {
+        const entities = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        };
 
-          table.innerHTML = `
-      <tr>
-        <td colspan="8" class="empty-state">
-          Failed to load search results.
-        </td>
-      </tr>
-    `;
-        }
+        return String(value ?? "").replace(
+          /[&<>"']/g,
+          (character) => entities[character],
+        );
+      }
+
+      function connectSearchWebSocket() {
+        const websocketUrl = new URL("/ws", API_BASE_URL);
+        websocketUrl.protocol =
+          websocketUrl.protocol === "https:" ? "wss:" : "ws:";
+
+        const socket = new WebSocket(websocketUrl);
+        searchSocket = socket;
+
+        socket.addEventListener("open", async () => {
+          const query = pendingSearchQuery ?? searchInput.value;
+          pendingSearchQuery = null;
+
+          try {
+            await postText("/search/input", query);
+          } catch (error) {
+            console.error("Search input error:", error);
+          }
+        });
+
+        socket.addEventListener("message", (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "search_result") {
+              renderSearchResult(message);
+            } else if (message.type === "recent_products") {
+              renderRecentWorkspace(message.items);
+            }
+          } catch (error) {
+            console.error("Invalid WebSocket message:", error);
+          }
+        });
+
+        socket.addEventListener("close", () => {
+          if (searchSocket === socket) {
+            setTimeout(connectSearchWebSocket, WEBSOCKET_RECONNECT_DELAY);
+          }
+        });
+
+        socket.addEventListener("error", () => socket.close());
       }
 
       // ============================================================
@@ -485,9 +520,6 @@
             await removeProduct(productId);
 
             console.log(`Product ${productId} removed successfully`);
-
-            await loadSearchResult();
-            await loadRecentWorkspace();
           } catch (error) {
             console.error("Remove product error:", error);
 
@@ -500,58 +532,41 @@
       // RECENT WORKSPACE
       // ============================================================
 
-      async function loadRecentWorkspace() {
+      function renderRecentWorkspace(items) {
         const table = document.getElementById("recentOperations");
         const count = document.getElementById("operationCount");
+        const recentItems = Array.isArray(items) ? items : [];
 
-        try {
-          const items = await getData("/product/recent");
+        count.textContent = `${recentItems.length} product${
+          recentItems.length !== 1 ? "s" : ""
+        }`;
 
-          const recentItems = Array.isArray(items) ? items : [];
-
-          count.textContent = `${recentItems.length} product${
-            recentItems.length !== 1 ? "s" : ""
-          }`;
-
-          if (recentItems.length === 0) {
-            table.innerHTML = `
+        if (recentItems.length === 0) {
+          table.innerHTML = `
         <tr>
           <td colspan="5" class="empty-state">
             No recent workspace activity.
           </td>
         </tr>
       `;
-            return;
-          }
+          return;
+        }
 
-          table.innerHTML = recentItems
-            .map((item, index) => {
-              const product = item.product;
+        table.innerHTML = recentItems
+          .map((item, index) => {
+            const product = item.product;
 
-              return `
+            return `
           <tr>
             <td>${index + 1}</td>
-            <td>${product.id}</td>
-            <td>${product.product_name}</td>
-            <td>${item.operation}</td>
-            <td>${item.time}</td>
+            <td>${escapeHtml(product.id)}</td>
+            <td>${escapeHtml(product.product_name)}</td>
+            <td>${escapeHtml(item.operation)}</td>
+            <td>${escapeHtml(item.time)}</td>
           </tr>
         `;
-            })
-            .join("");
-        } catch (error) {
-          console.error("Recent workspace error:", error);
-
-          count.textContent = "0 products";
-
-          table.innerHTML = `
-      <tr>
-        <td colspan="5" class="empty-state">
-          Failed to load recent workspace.
-        </td>
-      </tr>
-    `;
-        }
+          })
+          .join("");
       }
 
       // ============================================================
@@ -610,9 +625,6 @@
           addProductMessage.textContent = "Product added successfully.";
 
           addProductForm.reset();
-
-          await loadSearchResult();
-          await loadRecentWorkspace();
         } catch (error) {
           console.error("Add product error:", error);
 
@@ -638,9 +650,9 @@
        *          ↓
        *     currentSearchQuery updated on server
        *          ↓
-       *     GET /search/result
+       *     WebSocket search_result message
        *          ↓
-       *     performSearch()
+       *     Retrieval Results updated
        */
       searchButton.addEventListener("click", async () => {
         await updateSearchInput();
@@ -731,24 +743,7 @@
       // INITIAL LOAD
       // ============================================================
 
-      loadRecentWorkspace();
-      loadSearchResult();
-
-      // ============================================================
-      // POLLING
-      // ============================================================
-
-      /*
-       * Search result:
-       * poll every 1 second.
-       */
-      setInterval(loadSearchResult, SEARCH_RESULT_POLLING);
-
-      /*
-       * Recent workspace:
-       * poll every 2 seconds.
-       */
-      setInterval(loadRecentWorkspace, RECENT_WORKSPACE_POLLING);
+      connectSearchWebSocket();
     </script>
   </body>
 </html>
