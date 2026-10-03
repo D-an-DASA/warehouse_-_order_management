@@ -192,10 +192,7 @@ vector<Product> SearchCore::search(
     }
     Product* exactMatch = productTable.search(id);
     if (exactMatch != nullptr) {
-        if (exactMatch->status != "AVAILABLE") {
-        return {};
-        }
-
+       
         recentActions.Put(*exactMatch, "READ");
         return {*exactMatch};
     }
