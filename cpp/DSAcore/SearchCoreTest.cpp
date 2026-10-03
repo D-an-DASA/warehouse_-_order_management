@@ -74,13 +74,13 @@ void testMainFlows(const fs::path& directory) {
     assert(found[0].status == "AVAILABLE");
     pass("tim ID va giu du 6 truong Product");
 
-    assert(core.search("Power B").size() == 4);
+    assert(core.search("Power B").size() == 2);
     assert(core.search("ower").empty());
     pass("tim theo prefix, khong tim substring");
 
     assert(idsOf(core.search("  POWER \t  bank  ")) ==
            idsOf(core.search("power bank")));
-    assert(core.search("  POWER \t  bank  ").size() == 4);
+    assert(core.search("  POWER \t  bank  ").size() == 2);
     pass("normalize chu hoa, trim va gom khoang trang");
 
     assert(core.search("#P00001").at(0).id == "P00001");
@@ -118,20 +118,20 @@ void testMainFlows(const fs::path& directory) {
 
     assert(core.deleteProduct("P00003"));
     assert((idsOf(core.search("power bank")) ==
-            vector<string>{"P00004", "P00002", "P00001"}));
+            vector<string>{"P00004", "P00001"}));
     assert((core.autocomplete("power b") == vector<string>{"Power Bank"}));
     pass("xoa mot ID van giu cac Product cung ten");
 
     SearchCore ranked;
     assert(ranked.loadCSV(writeCSV(directory, header + sampleRows)));
     assert((idsOf(ranked.search("power bank")) ==
-            vector<string>{"P00003", "P00004", "P00002", "P00001"}));
+            vector<string>{ "P00004", "P00001"}));
     pass("Min Heap uu tien best_by_date, arrived_time, roi ID");
 
-    assert((idsOf(ranked.search("power bank", 1)) == vector<string>{"P00003"}));
+    assert((idsOf(ranked.search("power bank", 1)) == vector<string>{"P00004"}));
     assert((idsOf(ranked.search("power bank", 2)) ==
-            vector<string>{"P00003", "P00004"}));
-    assert(ranked.search("power", 100).size() == 5);
+            vector<string>{"P00004", "P00001"}));
+    assert(ranked.search("power", 100).size() == 3);
     pass("search limit duoc ap dung sau xep hang");
 
     assert((ranked.autocomplete("power", 1) == vector<string>{"Power Bank"}));
@@ -199,8 +199,8 @@ void testMainFlows(const fs::path& directory) {
         assert(product.status == expected);
         assert(statuses.search(product.id).at(0).status == expected);
     }
-    assert(statuses.search("status").size() == 5);
-    pass("giu status hop le, mac dinh status sai, khong loc search");
+    assert(statuses.search("status").size() == 3);
+    pass("MC1 tra ID moi status, MC2 chi tra AVAILABLE");
 
     SearchCore display;
     Product spaced = makeProduct("  Power   Bank ");
@@ -286,7 +286,7 @@ void testCsvErrors(const fs::path& directory) {
     assert(!partial.loadCSV(writeCSV(directory, header + sampleRows +
         "P00006,Missing Columns\n")));
     assert(partial.size() == 5);
-    assert(partial.search("power").size() == 5);
+    assert(partial.search("power").size() == 3);
     assert(partial.search("P00006").empty());
     assert(partial.getRecent().empty());
     Product next = makeProduct("After Error");
