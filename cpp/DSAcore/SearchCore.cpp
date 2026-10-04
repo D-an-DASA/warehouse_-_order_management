@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -14,6 +15,87 @@
 using namespace std;
 
 namespace {
+
+bool csvRecordComplete(const string& record) {
+    bool quoted = false;
+    for (size_t i = 0; i < record.size(); ++i) {
+        if (record[i] != '"') {
+            continue;
+        }
+        if (quoted && i + 1 < record.size() && record[i + 1] == '"') {
+            ++i;
+        }
+        else {
+            quoted = !quoted;
+        }
+    }
+    return !quoted;
+}
+
+bool parseCsvRow(const string& line, vector<string>& fields) {
+    fields.clear();
+    string field;
+    bool quoted = false;
+    bool closedQuote = false;
+
+    for (size_t i = 0; i < line.size(); ++i) {
+        const char ch = line[i];
+        if (quoted) {
+            if (ch == '"') {
+                if (i + 1 < line.size() && line[i + 1] == '"') {
+                    field += '"';
+                    ++i;
+                }
+                else {
+                    quoted = false;
+                    closedQuote = true;
+                }
+            }
+            else {
+                field += ch;
+            }
+        }
+        else if (ch == ',' && !quoted) {
+            fields.push_back(field);
+            field.clear();
+            closedQuote = false;
+        }
+        else if (ch == '"') {
+            if (!field.empty() || closedQuote) {
+                return false;
+            }
+            quoted = true;
+        }
+        else if (closedQuote) {
+            return false;
+        }
+        else {
+            field += ch;
+        }
+    }
+
+    if (quoted) {
+        return false;
+    }
+    fields.push_back(field);
+    return true;
+}
+
+string escapeCsvField(const string& field) {
+    if (field.find_first_of(",\"\r\n") == string::npos) {
+        return field;
+    }
+
+    string escaped = "\"";
+    for (char ch : field) {
+        if (ch == '"') {
+            escaped += '"';
+        }
+        escaped += ch;
+    }
+    escaped += '"';
+    return escaped;
+}
 
 // Chuan hoa khoa tim kiem, khong thay doi ten hien thi trong Product.
 string normalizeText(const string& text) {
@@ -86,34 +168,52 @@ bool SearchCore::loadCSV(const string& filename) {
     }
 
     size_t lineNumber = 1;
+    size_t recordStartLine = 0;
+    bool readingRecord = false;
+    string record;
     while (getline(file, line)) {
         ++lineNumber;
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
         }
-        if (normalizeText(line).empty()) {
+        if (!readingRecord && normalizeText(line).empty()) {
             continue;
         }
-        if (count(line.begin(), line.end(), ',') != 5) {
-            cerr << "CSV dong " << lineNumber << ": can dung 6 cot\n";
-            return false;
+        if (readingRecord) {
+            record += '\n';
+        }
+        else {
+            recordStartLine = lineNumber;
+            readingRecord = true;
+        }
+        record += line;
+        if (!csvRecordComplete(record)) {
+            continue;
         }
 
-        istringstream row(line);
+        vector<string> fields;
+        if (!parseCsvRow(record, fields) || fields.size() != 6) {
+            cerr << "CSV dong " << recordStartLine
+                 << ": can dung 6 cot CSV hop le\n";
+            return false;
+        }
+        record.clear();
+        readingRecord = false;
+
         Product product;
-        getline(row, product.id, ',');
-        getline(row, product.product_name, ',');
-        getline(row, product.made_date, ',');
-        getline(row, product.arrived_time, ',');
-        getline(row, product.best_by_date, ',');
-        getline(row, product.status, ',');
+        product.id = fields[0];
+        product.product_name = fields[1];
+        product.made_date = fields[2];
+        product.arrived_time = fields[3];
+        product.best_by_date = fields[4];
+        product.status = fields[5];
 
         if (!isValidProductId(product.id)) {
-            cerr << "CSV dong " << lineNumber << ": ID khong hop le\n";
+            cerr << "CSV dong " << recordStartLine << ": ID khong hop le\n";
             return false;
         }
         if (!productTable.insert(product)) {
-            cerr << "CSV dong " << lineNumber
+            cerr << "CSV dong " << recordStartLine
                  << ": ID san pham bi trung: " << product.id << '\n';
             return false;
         }
@@ -122,7 +222,56 @@ bool SearchCore::loadCSV(const string& filename) {
         updateIdCounter(product.id);
     }
 
+    if (readingRecord) {
+        cerr << "CSV dong " << recordStartLine
+             << ": record CSV chua dong quote\n";
+        return false;
+    }
     return file.eof();
+}
+
+// Ghi snapshot đầy đủ của HashTable ra CSV.
+bool SearchCore::saveCSV(const string& filename) const {
+    const filesystem::path path(filename);
+    const filesystem::path parent = path.parent_path();
+    error_code filesystemError;
+    if (!parent.empty()) {
+        filesystem::create_directories(parent, filesystemError);
+        if (filesystemError) {
+            cerr << "Khong tao duoc thu muc CSV: " << parent.string()
+                 << ": " << filesystemError.message() << '\n';
+            return false;
+        }
+    }
+
+    ofstream file(path, ios::binary | ios::trunc);
+    if (!file) {
+        cerr << "Khong mo duoc file CSV de ghi: " << filename << '\n';
+        return false;
+    }
+
+    file << "id,product_name,made_date,arrived_time,best_by_date,status\n";
+    vector<Product> products = productTable.getAll();
+    sort(products.begin(), products.end(),
+         [](const Product& left, const Product& right) {
+             return left.id < right.id;
+         });
+
+    for (const Product& product : products) {
+        file << escapeCsvField(product.id) << ','
+             << escapeCsvField(product.product_name) << ','
+             << escapeCsvField(product.made_date) << ','
+             << escapeCsvField(product.arrived_time) << ','
+             << escapeCsvField(product.best_by_date) << ','
+             << escapeCsvField(product.status) << '\n';
+    }
+
+    file.close();
+    if (!file) {
+        cerr << "Ghi file CSV that bai: " << filename << '\n';
+        return false;
+    }
+    return true;
 }
 
 // Them mot Product va dong bo index ten, recent.

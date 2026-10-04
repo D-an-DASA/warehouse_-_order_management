@@ -42,13 +42,16 @@ public:
     // Đọc dữ liệu ban đầu từ file CSV
     bool loadCSV(const std::string& filename);
 
+    // Lưu toàn bộ sản phẩm hiện có vào file CSV
+    bool saveCSV(const std::string& filename) const;
+
     // Thêm sản phẩm và ghi ID được sinh ra vào product
     bool addProduct(Product& product);
 
     // Xóa sản phẩm theo ID
     bool deleteProduct(const std::string& id);
 
-    // Tìm chính xác theo ID, nếu không có thì tìm tên theo tiền tố
+    // ID chính xác trả mọi trạng thái; tìm theo tên/prefix chỉ trả AVAILABLE
     std::vector<Product> search(
         const std::string& query,
         std::size_t limit = 50

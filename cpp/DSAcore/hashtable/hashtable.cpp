@@ -111,3 +111,13 @@ bool HashTable::remove(const string& id) {
     }
     return false;   // Không tìm thấy để xóa
 }
+
+// Trả về bản sao của toàn bộ Product trong các bucket.
+vector<Product> HashTable::getAll() const {
+    vector<Product> products;
+    products.reserve(size);
+    for (const auto& bucket : buckets) {
+        products.insert(products.end(), bucket.begin(), bucket.end());
+    }
+    return products;
+}

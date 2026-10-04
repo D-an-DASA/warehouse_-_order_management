@@ -28,6 +28,7 @@ public:
     bool insert(const Product& p);
     Product* search(const string& id);
     bool remove(const string& id);
+    vector<Product> getAll() const;
 
     int getSize() const { return size; }
     int getCapacity() const { return capacity; }
