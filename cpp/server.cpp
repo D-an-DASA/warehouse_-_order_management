@@ -11,9 +11,12 @@
 #include <iostream>
 #include <algorithm>
 #include <string>
+#include <ctime>
 #include <vector>
 #include <mutex>
 #include <memory>
+#include <cstdlib>
+#include <filesystem>
 
 #include "src/httplib.h"
 #include "src/json.hpp"
@@ -70,6 +73,23 @@ json productToJson(const Product &product)
 // Protect shared search state because HTTP handlers
 // may be executed concurrently.
 mutex searchMutex;
+
+const filesystem::path persistentCsvPath =
+    filesystem::path("cpp") / "DSAcore" / "Persistent" / "Persistent.csv";
+
+void savePersistentDataOnExit()
+{
+    lock_guard<mutex> lock(searchMutex);
+    if (!searchCore.saveCSV(persistentCsvPath.string()))
+    {
+        cerr << "[Persistence] Failed to save "
+             << persistentCsvPath.string() << '\n';
+        return;
+    }
+
+    cout << "[Persistence] Saved products to "
+         << persistentCsvPath.string() << '\n';
+}
 
 // ============================================================
 // CORS
@@ -332,7 +352,13 @@ void setupAddProductEndpoint(Server &server)
                     product.best_by_date =
                         payload["best_by_date"].get<string>();
 
-                    product.status = "AVAILABLE";
+                    const time_t now = time(nullptr);
+                    const tm *today = localtime(&now);
+                    char todayDate[11];
+                    strftime(todayDate, sizeof(todayDate), "%Y-%m-%d", today);
+                    product.status = product.best_by_date > todayDate
+                                         ? "AVAILABLE"
+                                         : "EXPIRED";
 
                     if (!searchCore.addProduct(product))
                     {
@@ -509,11 +535,13 @@ void setupDeleteProductEndpoint(Server &server)
 
 void setupSearchInputEndpoint(Server &server)
 {
+    Server *serverInstance = &server;
     server.Post(
         "/search/input",
-        [](const Request &req, Response &res)
+        [serverInstance](const Request &req, Response &res)
         {
             bool resultChanged = false;
+            bool shutdownRequested = false;
 
             {
                 lock_guard<mutex> lock(searchMutex);
@@ -525,8 +553,12 @@ void setupSearchInputEndpoint(Server &server)
                      << currentSearchQuery
                      << "\n";
 
+                shutdownRequested =
+                    currentSearchQuery == "/SHUTDOWN";
+
                 // Has the search query changed?
-                if (currentSearchQuery !=
+                if (!shutdownRequested &&
+                    currentSearchQuery !=
                     lastProcessedQuery)
                 {
                     cout << "[SEARCH] New search query: "
@@ -542,6 +574,14 @@ void setupSearchInputEndpoint(Server &server)
 
                     resultChanged = true;
                 }
+            }
+
+            if (shutdownRequested)
+            {
+                cout << "[SERVER] Shutdown requested via /search/input\n";
+                res.status = 204;
+                serverInstance->stop();
+                return;
             }
 
             // ------------------------------------------------
@@ -614,9 +654,33 @@ void setupAutocompleteEndpoint(Server &server)
 
 int main()
 {
-    if (!searchCore.loadCSV(
-            "cpp/product_inventory_100 000.csv"))
+    error_code filesystemError;
+    const bool hasPersistentData =
+        filesystem::exists(persistentCsvPath, filesystemError);
+    if (filesystemError)
     {
+        cerr << "Could not check persistent CSV: "
+             << filesystemError.message() << '\n';
+        return 1;
+    }
+
+    const string initialCsv = hasPersistentData
+                                  ? persistentCsvPath.string()
+                                  : "cpp/product_inventory_10 000.csv";
+    if (!searchCore.loadCSV(initialCsv))
+    {
+        return 1;
+    }
+
+    if (!hasPersistentData &&
+        !searchCore.saveCSV(persistentCsvPath.string()))
+    {
+        return 1;
+    }
+
+    if (std::atexit(savePersistentDataOnExit) != 0)
+    {
+        cerr << "Could not register persistent save on exit.\n";
         return 1;
     }
 

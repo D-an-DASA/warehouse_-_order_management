@@ -350,6 +350,56 @@ void testCsvErrors(const fs::path& directory) {
     pass("CSV CRLF, dong trang va ten nhieu khoang trang");
 }
 
+void testSaveCSV(const fs::path& directory) {
+    SearchCore original;
+    Product quoted = makeProduct("Product, \"Quoted\"\nName", "EXPIRED");
+    quoted.made_date = "2026-02-03";
+    quoted.arrived_time = "2026-02-04 05:06:07";
+    quoted.best_by_date = "2026-02-05";
+    assert(original.addProduct(quoted));
+
+    Product reserved = makeProduct("Reserved Item", "RESERVED");
+    assert(original.addProduct(reserved));
+
+    const fs::path filename =
+        directory / "Persistent" / "Persistent.csv";
+    assert(original.saveCSV(filename.string()));
+    assert(fs::exists(filename));
+
+    SearchCore restored;
+    assert(restored.loadCSV(filename.string()));
+    assert(restored.size() == 2);
+
+    const Product savedQuoted = restored.search(quoted.id).at(0);
+    assert(savedQuoted.id == quoted.id);
+    assert(savedQuoted.product_name == quoted.product_name);
+    assert(savedQuoted.made_date == quoted.made_date);
+    assert(savedQuoted.arrived_time == quoted.arrived_time);
+    assert(savedQuoted.best_by_date == quoted.best_by_date);
+    assert(savedQuoted.status == quoted.status);
+    assert(restored.search(reserved.id).at(0).status == "RESERVED");
+    pass("saveCSV tao thu muc, luu day du truong va round-trip CSV escaping");
+}
+
+void testPersistInventoryDataset() {
+    const fs::path source =
+        fs::path("cpp") / "product_inventory_10 000.csv";
+    const fs::path destination =
+        fs::path("cpp") / "DSAcore" / "Persistent" / "Persistent.csv";
+
+    SearchCore inventory;
+    assert(inventory.loadCSV(source.string()));
+    assert(inventory.size() == 10000);
+    assert(inventory.saveCSV(destination.string()));
+
+    SearchCore restored;
+    assert(restored.loadCSV(destination.string()));
+    assert(restored.size() == inventory.size());
+    assert(restored.search("P00001").at(0).id == "P00001");
+    assert(restored.search("P10000").at(0).id == "P10000");
+    pass("luu dataset 10,000 san pham vao Persistent.csv va nap lai day du");
+}
+
 void testDataset(const string& filename, int count, const string& lastId,
                  const string& nextId) {
     SearchCore core;
@@ -382,6 +432,8 @@ int main() {
         testMainFlows(directory);
         testIdAndResize(directory);
         testCsvErrors(directory);
+        testSaveCSV(directory);
+        testPersistInventoryDataset();
         testDataset("cpp/product_inventory_10 000.csv", 10000, "P10000", "P10001");
         testDataset("cpp/product_inventory_100 000.csv", 100000, "P100000", "P100001");
     }

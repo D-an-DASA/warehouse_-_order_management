@@ -188,6 +188,14 @@ cầu; mỗi sản phẩm nhận một ID riêng và không lưu `quantity` tron
 
 Xóa đúng một sản phẩm theo ID.
 
+### Persistent inventory
+
+Khi khởi động, backend nạp dữ liệu từ
+`cpp/DSAcore/Persistent/Persistent.csv`. Nếu file chưa tồn tại, backend khởi
+tạo từ `cpp/product_inventory_10 000.csv` rồi tạo file persistent. Khi server
+thoát bình thường, toàn bộ sản phẩm trong HashTable được lưu lại vào file
+persistent này.
+
 ---
 
 # 6. Data Structures & Algorithms
@@ -242,6 +250,13 @@ Product
 Hash Table được thiết kế chuyên biệt cho product-ID workflow.
 
 Nó không được sử dụng bên trong LRU Cache vì LRU Cache cần một lookup structure tổng quát hơn; LRU hiện sử dụng `unordered_map` của C++ kết hợp với doubly linked list tự xây dựng.
+
+### Product data persistence
+
+Backend loads `cpp/DSAcore/Persistent/Persistent.csv` when that file exists;
+otherwise it loads the initial 100,000-product dataset. On normal program exit,
+the complete Hash Table is saved back to the persistent CSV, including the
+current product statuses. The path is relative to the project root.
 
 ---
 
