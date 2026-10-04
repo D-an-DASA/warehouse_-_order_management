@@ -381,11 +381,11 @@ void testSaveCSV(const fs::path& directory) {
     pass("saveCSV tao thu muc, luu day du truong va round-trip CSV escaping");
 }
 
-void testPersistInventoryDataset() {
+void testPersistInventoryDataset(const fs::path& directory) {
     const fs::path source =
         fs::path("cpp") / "product_inventory_10 000.csv";
     const fs::path destination =
-        fs::path("cpp") / "DSAcore" / "Persistent" / "Persistent.csv";
+        directory / "Persistent" / "Persistent.csv";
 
     SearchCore inventory;
     assert(inventory.loadCSV(source.string()));
@@ -433,7 +433,7 @@ int main() {
         testIdAndResize(directory);
         testCsvErrors(directory);
         testSaveCSV(directory);
-        testPersistInventoryDataset();
+        testPersistInventoryDataset(directory);
         testDataset("cpp/product_inventory_10 000.csv", 10000, "P10000", "P10001");
         testDataset("cpp/product_inventory_100 000.csv", 100000, "P100000", "P100001");
     }
